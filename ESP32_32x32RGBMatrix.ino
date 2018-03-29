@@ -81,7 +81,7 @@ int anifileframecounter=0;
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.46 ota fs ntp ti ini rgb";//
+const char* progversion  = "32x32 RGB-Matrix V0.47 ota fs ntp ti ini rgb";//
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
@@ -454,7 +454,6 @@ void setup() {
   //upload.htm
    
   server.on("/upload", HTTP_POST, []() {
-    stoppTimer(true);
     server.send(200, "text/plain", "");
   }, handleFileUpload);
   
@@ -1239,10 +1238,10 @@ void handleData(){// data.json
 
 
 void handleFileUpload() {          // Dateien ins SPIFFS schreiben
-  stoppTimer(true);
   setplayfiledata("");
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
+    stoppTimer(true);
     String filename = upload.filename;
     Serial.print("handleFileUpload Name: "); Serial.println(filename);
     if (filename.length() > 30) {
