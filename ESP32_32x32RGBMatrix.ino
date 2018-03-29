@@ -6,9 +6,11 @@
  * Serial input:
  *  setssid=      SSID for WLAN
  *  setpass=      Passwort for WLAN
+ *  sethost=      hostname for WLAN
  *  ESP=reboot    reboot ESP
  *  ESP=getssid   show SSID
  *  ESP=getpass   show Password
+ *  ESP=gethost   show esp_hostname
  *  ESP=gettime   show lokaltime
  *  ESP=getdate   show lokaldate
  *  ESP=hatntp    show true when set time/date from NTP
@@ -81,11 +83,11 @@ int anifileframecounter=0;
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.47 ota fs ntp ti ini rgb";//
+const char* progversion  = "32x32 RGB-Matrix V0.48 ota fs ntp ti ini rgb";//
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
-#define ARDUINO_HOSTNAME  "rgbmatrix" //esp32-30aea43897c4
+String esp_hostname = "rgbmatrix"; //nur zeichen und "-" keine "_"!
 
 #define LED_PIN 2        //gpio05 D1
 
@@ -269,11 +271,6 @@ void drawTask( void * pvParameters ){
               
            }else{
             //testscreen of off
-                 String s="";
-                if(ntp_stunde<10)s+="0";
-                s+=String(ntp_stunde)+":";
-                if(ntp_minute<10)s+="0";
-                s+=String(ntp_minute);
                   
                 //text
                 matrix.setBrightness(10);//0..10
@@ -282,11 +279,12 @@ void drawTask( void * pvParameters ){
                 matrix.black();//alles löschen
 
                 //blinkender richtungsloser Fleck
+/*
                 lavercounter+=(stepp*steppDir);
                 if(lavercounter>=255){steppDir=-1;lavercounter=255;}
                 if(lavercounter<=0)  {steppDir= 1;lavercounter=0;}
                 matrix.fillCircle(15, 16, 11, matrix.AdafruitColor(lavercounter,lavercounter,0) );//int16_t
-  
+  */
                 //testlines RGBW
                 byte i;
                 for(i=0;i<32;i++){
@@ -296,18 +294,38 @@ void drawTask( void * pvParameters ){
                     matrix.drawPixel(i, 31, i*8,i*8,i*8);
                 }
 
+                String s="";
+                if(ntp_stunde<10)s+="0";
+                s+=String(ntp_stunde)+":";
+                if(ntp_minute<10)s+="0";
+                s+=String(ntp_minute);
                 //Time
                 matrix.setCursor(1, 0);
                 matrix.setTextColor(matrix.AdafruitColor(0,255,0));
                 matrix.println(s);
+
+                //Datum
+                s="";
+                if(ntp_day<10)s+="0";
+                s+=String(ntp_day)+".";
+                if(ntp_month<10)s+="0";
+                s+=String(ntp_month)+".";
+                matrix.setCursor(1, 10);
+                matrix.setTextColor(matrix.AdafruitColor(255,255,0));
+                matrix.println(s);
                 
-                //Secunden
-                matrix.setTextColor(matrix.AdafruitColor(255,255,255));
+                delay(500-renderframedelay);
+                
+                //Sekunden
+               /* matrix.setTextColor(matrix.AdafruitColor(255,255,255));
                 matrix.setCursor(10, 10);
                 s="";
                 if(ntp_secunde<10)s="0";
                 s+=String(ntp_secunde);
                 matrix.println(s);
+                */
+                
+                
               }
 
       }else{
@@ -332,16 +350,28 @@ bool beginWiFi(){
       Serial.println("get pass ***");
       password=s;
   }
+  s=getINI("host");
+  if(s.length()>0){
+      Serial.println("get hostname "+s);
+      esp_hostname=s;
+  }
+
 
   if(ssid.length()==0 || password.length()==0){
     Serial.print(":-/  please");
     if(ssid.length()==0)
       Serial.print("set SSID (setssid=) ");
     if(password.length()==0)
-      Serial.print("set Pass (setpass=) ");    
+      Serial.print("set Pass (setpass=) ");   
     Serial.println(String(ssid.length())+" "+String(password.length()));
     return false;
    }
+
+   if(esp_hostname.length()>0){
+    char charBufHostname[255];
+    esp_hostname.toCharArray(charBufHostname,255);
+    WiFi.setHostname(charBufHostname);
+  }
   
   char charBufSSID[255];
   char charBufPASS[255];
@@ -366,8 +396,9 @@ void setup() {
   //WIFI
   WiFi.mode(WIFI_STA);
   WiFi.onEvent(WiFiEvent);  
+  
   if(!beginWiFi()){Serial.println("no WIFI");return;}
-  WiFi.setHostname(ARDUINO_HOSTNAME);// !
+  
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
     delay(6000);
@@ -383,7 +414,7 @@ void setup() {
   }
   Serial.print("MAC: ");
   Serial.println(macadresse);
-
+  
   //Online Update 
   ArduinoOTA
     .onStart([]() {
@@ -419,7 +450,12 @@ void setup() {
       else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
       else if (error == OTA_END_ERROR) Serial.println("End Failed");
     });
-
+  
+  if(esp_hostname.length()>0){
+    char charBufHostname[255];
+    esp_hostname.toCharArray(charBufHostname,255);
+    ArduinoOTA.setHostname(charBufHostname);
+  }
   ArduinoOTA.begin();
 
 
@@ -657,9 +693,9 @@ void renderTask( void * pvParameters ){//80Mhz 80000000Hz (240 MHz)
 
 
 void coreTask( void * pvParameters ){
-  String taskMessage = ">>>Task running on core ";
-  taskMessage = taskMessage + xPortGetCoreID();
-  int ctcounter=0;
+  //String taskMessage = ">>>Task running on core ";
+  //taskMessage = taskMessage + xPortGetCoreID();
+  //int ctcounter=0;
   while(true){
     handleSerial();
     if(!istupdating){
@@ -668,7 +704,7 @@ void coreTask( void * pvParameters ){
           server.handleClient();
           handleTime();
         }
-        /*  */
+        /*  
         ctcounter++;
        // if(int(ctcounter/10.0)*10==ctcounter) Serial.println('>'+String(ctcounter));
         if(ctcounter>10){
@@ -691,7 +727,7 @@ void coreTask( void * pvParameters ){
            
           Serial.println(s);
           ctcounter=0;
-        }
+        }*/
     }
     delay(100);   
   }
@@ -894,11 +930,18 @@ void handleSerial(){
         else
       if(sname=="setpass")
           {
-            ssid=svalue;     
+            ssid=svalue;
             stoppTimer(false);
             setINI("pass",svalue);
             startTimer();
           }
+       else
+       if(sname=="sethost"){
+          esp_hostname=svalue;
+          stoppTimer(false);
+          setINI("host",svalue);
+          startTimer();
+       }
        else
        if(sname=="ESP" ){
             Serial.print("ESP ");
@@ -915,6 +958,11 @@ void handleSerial(){
             if(svalue=="getpass")
                 {
                    Serial.println(getINI("pass"));
+                }
+            else
+            if(svalue=="gethost")
+                {
+                   Serial.println(getINI("host"));
                 }
             else
             if(svalue=="gettime")
@@ -983,6 +1031,13 @@ void handleaktion(){//HTTP: /aktion?refresh=605
        aktionen +="set_timekorr ";
        message +="\"settimekorr\":\"true\",\r\n";
     }
+    if (server.argName(i) == "sethost") {
+       esp_hostname= server.arg(i);
+       aktionen +="set_host ";
+       message +="\"sethost\":\""+esp_hostname+"\",\r\n";
+       setINI("host",esp_hostname);
+    }
+    
     if (server.argName(i) == "refresh") {
       aktionen+="setrenderupdatecountermax ";
       if(server.arg(i).length()>0){
@@ -1450,7 +1505,7 @@ void getNTPTime(){
      ntpangefragt=false;
      if ( WiFi.status() != WL_CONNECTED ) Serial.println("no connect");
      //Reeboot ?
-     //OTA.setup(WIFI_SSID, WIFI_PASSWORD, ARDUINO_HOSTNAME);
+     //OTA.setup(WIFI_SSID, WIFI_PASSWORD, esp_hostname);
 
     //digitalWrite(LED_PIN, true);
     //delay(500);
