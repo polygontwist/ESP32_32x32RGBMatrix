@@ -157,6 +157,8 @@ TaskHandle_t xHandleCoreTask;
 String playfile="";
 bool DisplayOn=true;
 
+bool timeriststopped=false;
+int requeststopp=0;
 
 //https://github.com/espressif/arduino-esp32/issues/855
 //IRAM_ATTR tells the complier, that this code Must always be in the 
@@ -518,8 +520,7 @@ void setup() {
   Serial.println("Ready");
 }
 
-bool timeriststopped=false;
-int requeststopp=0;
+
 void stoppTimer(bool matrixblank){
    requeststopp++;
    if(timeriststopped)return;
@@ -1197,6 +1198,7 @@ void handleData(){// data.json
   /**/
  
    message +="\"macadresse\":\""+macadresse+"\",\r\n";
+   message +="\"requeststopp\":\""+String(requeststopp)+"\",\r\n";
 
     message +="\"fstotalBytes\":"+String(SPIFFS.totalBytes())+",\r\n";
     message +="\"fsusedBytes\":"+String(SPIFFS.usedBytes())+",\r\n";
