@@ -1,0 +1,80 @@
+/*32x32 RGB Matrix*/
+
+*{
+	box-sizing: border-box;
+}
+body{
+	font-family:Verdana;
+	font-size:12pt;
+}
+h1{font-size: 12pt;}
+
+nav{
+	margin-bottom:10px;
+	/*border-bottom: 1px solid #d0d0d0;*/
+}
+
+
+nav a,.fl_del,.f_play{
+	text-align: center;
+	border:0;
+	height: 25px;
+	cursor:pointer;
+	display:inline-block;
+	color:#000;	
+	-webkit-border-radius: 19px;
+	-moz-border-radius: 19px;
+	border-radius: 19px;	
+	margin:0;	
+	text-decoration:none;
+	padding: 0 11px;
+	line-height: 25px;
+	background-color: #f8b2b2;
+}
+
+nav a{
+	background-color: #d0d0d0;
+	/*border-radius: 5px 15px 0 0;*/
+}
+nav a:hover{
+	background-color: #e0e0e0;
+}
+.f_play{
+    background-color: #a8e69e;
+}
+.f_play:hover{
+	background-color: #baf2b1;
+}
+
+.fl_del:hover{
+	background-color:#ffc936;
+}
+
+.isanni{
+	margin-right:10px;
+}
+
+table.files {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    border: 1px solid #dddddd;
+}
+
+.files td {
+    border: 1px solid #dddddd;
+    padding: 6px;
+}
+
+.files tr:nth-child(even) {
+   background-color: rgba(0,0,0,0.05);
+}
+.size{width:80px;text-align:right;}
+.action{width:80px;}
+
+.upload,.upload input{
+	font-size:12pt;
+}
+.upload{
+	margin-bottom:30px;
+	 font-size:0;/*leere node entfernen*/
+}
