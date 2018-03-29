@@ -7,6 +7,8 @@ Crash beim SPIFFS lesen/schreiben & aktiven Timer
 
 Momentan wird bei Datei I/O der Timer abgeschaltet
 
+Der Quellcode ist noch "etwas" unübersichtlich... das mit dem Auslagern/includen muß ich mir erst noch ansehen.
+
 # Funktionen
 * OTA - onlineupdate
 * SPIFFS - Filesystem
