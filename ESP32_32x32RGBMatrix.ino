@@ -255,6 +255,7 @@ startTimer();
 
 }
 
+#define renderframedelay 40 //ms 40=25fps
 void drawTask( void * pvParameters ){
     //String taskMessage = ">>>Task running on core ";
    // taskMessage = taskMessage + xPortGetCoreID();
@@ -264,7 +265,7 @@ void drawTask( void * pvParameters ){
    while(true){
       if(DisplayOn){  
            if(playfile!=""){
-              playafileframe(40);
+              playafileframe(renderframedelay);
               
            }else{
             //testscreen of off
@@ -313,7 +314,7 @@ void drawTask( void * pvParameters ){
         matrix.black();
       }
       //delay(40);//40ms=25fps
-      delay(40);//25fps
+      delay(renderframedelay);//25fps
    }
 }
 
