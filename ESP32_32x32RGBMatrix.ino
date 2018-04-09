@@ -192,7 +192,9 @@ void IRAM_ATTR playafileframe(int16_t framedelay){//40ms=25fps
 //portDISABLE_INTERRUPTS();
 
 // timerAlarmDisable(displayUpdateTimer);//     
-   stoppTimer(false);
+   
+   //TODO: cachen?
+   stoppTimer(true);//false
 
    //open file
    aniFile= SPIFFS.open(playfile, "r");
@@ -614,8 +616,8 @@ void renderTask( void * pvParameters ){//80Mhz 80000000Hz (240 MHz)
 
         for(ic=0;ic<15;ic++){
           for(i=0;i<16;i++){//row/2
-           matrix.updateRow();//2x16 Zeilen
-           matrix.updateOn();
+          // matrix.updateRow();//2x16 Zeilen
+          // matrix.updateOn();
            delayMicroseconds(renderupdatecountermax); //26 223 319 11
           
            //vTaskDelay(1); //vTaskDelay(timeValInMillisecs/portTICK_PERIOD_MS)
