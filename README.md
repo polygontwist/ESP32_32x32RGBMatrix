@@ -12,6 +12,7 @@ Der Quellcode ist noch "etwas" unübersichtlich... das mit dem Auslagern/include
 # Hinweise
 * Passwort und SSID müssen per Serielle Konsole gesetzt werden, wenn man es nicht im Quellcode setzen möchte.
 * der Hostname ist bei mir fest eingestellt, dieser ist evtl. anzupassen!
+* Funktionen zum Erstellen der Animationen sind noch nicht implementiert (müssen vom alten Projekt übernommen werden)
 
 # Funktionen
 * OTA - onlineupdate
