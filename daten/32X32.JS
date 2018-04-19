@@ -8,7 +8,7 @@ TODO:
 
 //deutsch:
 var thetext={
-	stat0:"Arduino Version: ",
+	stat0:"Version: ",
 	stat1:"SD-Karte: ",
 	stat2:"aktive Animation: ",
 
@@ -233,7 +233,7 @@ function c_Editor(ziel,wos){
 	o.isAniplay=false;
 	
 	o.arrTos=function(a){var s="";for(var t=0;t<a.length;t++)s+=a[t]+'\r\n';return s}
-	
+//TODO: überarbeiten, funktioniert nicht mehr so!	
 	o.saveAni=function(){
 		showSta(tra("statsave"));
 		var da="",t,f,v,vda;
@@ -247,6 +247,7 @@ function c_Editor(ziel,wos){
 			da+="d"+v+"\r\n";//#0d cr #0a lf
 		}
 		da+=" \r\n";
+		console.log(da);
 		showSta(tra("statsave")+".");
 		
 		var mLo=getXREq();		
@@ -273,10 +274,10 @@ function c_Editor(ziel,wos){
 							console.log("Fehler "+this.status);
 					}
 				};
-				mLo.open("POST","upload.htm?dir=",false);
+				mLo.open("POST","upload?dir=",false);
 				srh(mLo,"X-Date",getDatum());//X-Date: jjjjmmtthhmmss
-				srh(mLo,"Content-length",da.length);
-				srh(mLo,"Connection","close");
+				srh(mLo,"Content-length",da.length);			//TODO: abgeleht!!!!
+				srh(mLo,"Connection","close");					//TODO: abgeleht!!!!
 				srh(mLo,"Content-Type","multipart/form-data; boundary=---------------------------6675123456789");
 				srh(mLo,"Connection","keep-alive");
 				srh(mLo,"Pragma","no-cache");
@@ -295,6 +296,7 @@ function c_Editor(ziel,wos){
 		alert(tra("dok"));
 		o.hatdaten=false;
 		showSta("");
+		console.log(rt);
 	}
 	
 	o.get_Color444=function(r,g,b){//#rgb  0..F return String
@@ -768,12 +770,16 @@ function c_Editor(ziel,wos){
 		this.sendNexttoArduino();
 	}
 	o.sendNexttoArduino=function(){
+		//TODO: mehrere Befehle zusammenfassen, sonst zu langsam...
+		//evt. als temp-file?
+		
 		var o=this;
 		o.sendcounter++;
 		var s=o.senddata[o.sendcounter];
+		if(o.sendcounter==1)console.log(o.senddata);
 		if(o.sendcounter<o.senddata.length){
 				showSta("send "+o.sendcounter+"/"+o.senddata.length)
-				o.wos.ladeDaten("draw.ard?draw="+s,o.parsesendto,o);				
+				o.wos.ladeDaten("draw.ard?draw="+s,o.parsesendto,o);
 				}
 			else{
 				o.sendcounter=0;
@@ -1395,7 +1401,7 @@ function wOS(zielid){
 			mLo.onreadystatechange = function(){
 					if(this.readyState==4){							
 					   if (this.status==200||this.status==304||this.status==0)
-							this.parsefunc(); 
+							{if(typeof parsefunc==="function")this.parsefunc();} 
 							else 
 							this.basis.error("Fehler "+this.status);
 					}

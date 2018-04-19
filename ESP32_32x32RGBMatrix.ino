@@ -94,18 +94,6 @@ String esp_hostname = "rgbmatrix"; //nur zeichen und "-" keine "_"!
 
 #define LED_PIN 2        //gpio05 D1
 
-unsigned int localPort = 2390;      // local port to listen for UDP packets
-IPAddress timeServerIP; // time.nist.gov NTP server address
-const char* ntpServerName = "0.europe.pool.ntp.org";
-/*
-time.nist.gov
-pool.ntp.org
-0.europe.pool.ntp.org
-1.europe.pool.ntp.org
-2.europe.pool.ntp.org
-3.europe.pool.ntp.org
-*/
-
 File fsUploadFile;                      //Hält den aktuellen Upload
 
 String basichtml = "<html><head><title>esp32 "+String(progversion)+"</title>\r\n"
@@ -484,7 +472,6 @@ void setup() {
   server.onNotFound(handleNotFound);//Dateien vom Speicher oder 404
   
   server.begin();
-//  udp.begin(localPort);
 
   //NTP start
   oNtp.begin();
@@ -1074,25 +1061,22 @@ void handlestatus()
 }
 
 void handleDraw(){
-  stoppTimer(true);
-  
   String html = "{}";
   server.setContentLength(html.length());
   server.send(200,"text/html",html);
-
   drawmodus="drawpic";
-  playfile="";
-    
+  playfile="";    
   char clientline[BUFSIZ+1];  //inputzeile
   int buffpos=0;
-
 //
   for (uint8_t i = 0; i < server.args(); i++) {
     if (server.argName(i) == "draw") {
        //server.arg(i)//  draw=f000
-
+        //stoppTimer(false);
         server.arg(i).toCharArray(clientline, BUFSIZ+1);
         drawBefehl(clientline);
+        matrix.update(); 
+        //startTimer();
        /*
           f000
           l23052331024
@@ -1104,7 +1088,7 @@ void handleDraw(){
        //server.arg(i)//  ti=1524083533262
     }
   }  
-  startTimer();
+ 
 }
 
 
