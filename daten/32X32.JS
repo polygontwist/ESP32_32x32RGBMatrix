@@ -1436,6 +1436,7 @@ function wOS(zielid){
 	  if(ordner!="")ordner+="/";
 	  dat.List.sort(this.listsort);
 
+	console.log(ordner,dat);			
 	  for(var t=0;t<dat.List.length;t++){
 		s=dat.List[t];				//  {"d":"2014-01-30 13:59:11","n":"INDEX.HTM","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
 		if(s.n==undefined)break;
@@ -1449,7 +1450,7 @@ function wOS(zielid){
 			li.style.display="none";
 			listeOff.push(li);
 			}
-	console.log(s.n,ordner,dat);			
+	//console.log(s.n,ordner,dat);			
 		
 		var aa=cE("a",li,this);
 		aa.basis=this;
@@ -1569,17 +1570,25 @@ function wOS(zielid){
 			}
 	}
 
-	o.ANIstop=function(){
-		this.basis.ladeDaten(this.obj.n+"?stop",this.basis.parsePlaydat,this);
-		return false;
+	var parsePS=function(data){
+		console.log(data);
+		//this.basis.parsePlaydat
+		//this.basis.parsePlaydat
+		//this.basis.parsePlaydat
+	};
+	
+	o.ANIstop=function(e){
+		this.basis.ladeDaten("/aktion?stop="+this.obj.n,parsePS,this);//aktion?
+		e.preventDefault();
 	}	
-	o.ANIplay=function(){
-		this.basis.ladeDaten(this.obj.n+"?play",this.basis.parsePlaydat,this);
-		return false;
+	o.ANIplay=function(e){
+		this.basis.ladeDaten("/aktion?play="+this.obj.n,parsePS,this);//aktion?
+		e.preventDefault();
 	}
-	o.deleteFile=function(){
-		if(confirm(tra("dlg1")))this.basis.ladeDaten(this.obj.n+"?delete",this.basis.parsePlaydat,this);
-		return false;
+	o.deleteFile=function(e){
+		if(confirm(tra("dlg1")))
+			this.basis.ladeDaten(this.obj.n+"?delete="+this.obj.n,parsePS,this);
+		e.preventDefault();
 	}	
 	
 	o.parsePlaydat=function(){

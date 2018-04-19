@@ -47,6 +47,9 @@
 #include "FS.h"
 #include "SPIFFS.h"
 
+#include "myNTP.h"
+myNTP oNtp;
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "Adafruit_GFX.h"
@@ -65,7 +68,7 @@ ESP32RGBmatrixPanel matrix;
 #define BUFSIZ 255
 int anifilepos=0;
 int anifileframecounter=0;
-
+String drawmodus="";
 
 //ESP32RGBmatrixPanel matrix(23, 22, 03, 17, 16, 04, 00, 02, 15, 21, 19, 18, 5); //Flexible connection
 //Default connection
@@ -83,7 +86,7 @@ int anifileframecounter=0;
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.48 ota fs ntp ti ini rgb";//
+const char* progversion  = "32x32 RGB-Matrix V0.50";//ota fs ntp ti ini rgb
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
@@ -117,33 +120,7 @@ char MAC_char[18];
 String macadresse="";
 bool wifiaktiv=false;
 
-const int NTP_PACKET_SIZE = 48; // NTP time stamp is in the first 48 bytes of the message
-byte packetBuffer[ NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
-WiFiUDP udp;
-unsigned long ntp_previousMillis=0;
-unsigned long ntp_previousMillisWaitNTP=0;
-unsigned long ntp_zeitchecker= 15000;//ms = 10sec 
-unsigned long ntp_zeitcheckeriftime= 5*60*1000;//5min
-unsigned long ntp_zeitcheckerWaitNTP= 1000;//ms = 1sec
-byte ntp_zcheckerversuche=0;
-byte ntp_zcheckerversuchemax=5;
-unsigned long ntp_thetime=0;
-unsigned long ntp_timestamp=0;//ms
-unsigned long ntp_unixtime=0;
-unsigned long ntp_timeDIFF=1*60*60;//sec -> unixtime+1h ->MESZ
 
-int ntp_year=0;
-byte ntp_month=0;
-byte ntp_day=0;
-
-byte ntp_wochentag=0;
-byte ntp_stunde=0;
-byte ntp_minute=0;
-byte ntp_secunde=0;
-byte last_minute=0;
-bool hatntptime=false;
-bool ntpangefragt=false;
-bool sommerzeitchecked=false;
 
 unsigned long uhr_previousMillis=0;
 unsigned long uhr_zeitchecker= 1000;//ms = 1sec
@@ -270,8 +247,13 @@ void drawTask( void * pvParameters ){
       if(DisplayOn){  
            if(playfile!=""){
               playafileframe(renderframedelay);
-              
-           }else{
+           }
+           else
+           if(drawmodus=="drawpic"){
+                //Puffer?
+           }           
+           else
+           {
             //testscreen of off
                   
                 //text
@@ -296,6 +278,10 @@ void drawTask( void * pvParameters ){
                     matrix.drawPixel(i, 31, i*8,i*8,i*8);
                 }
 
+                byte ntp_stunde   =oNtp.getstunde();
+                byte ntp_minute   =oNtp.getminute();
+                //byte ntp_secunde  =oNtp.getsecunde();
+
                 String s="";
                 if(ntp_stunde<10)s+="0";
                 s+=String(ntp_stunde)+":";
@@ -308,10 +294,10 @@ void drawTask( void * pvParameters ){
 
                 //Datum
                 s="";
-                if(ntp_day<10)s+="0";
-                s+=String(ntp_day)+".";
-                if(ntp_month<10)s+="0";
-                s+=String(ntp_month)+".";
+                if(oNtp.getday()<10)s+="0";
+                s+=String(oNtp.getday())+".";
+                if(oNtp.getmonth()<10)s+="0";
+                s+=String(oNtp.getmonth())+".";
                 matrix.setCursor(1, 10);
                 matrix.setTextColor(matrix.AdafruitColor(255,255,0));
                 matrix.println(s);
@@ -330,8 +316,9 @@ void drawTask( void * pvParameters ){
                 
               }
 
-      }else{
-        matrix.black();
+      }else{//display off
+        if(drawmodus!="drawpic")
+              matrix.black();
       }
       //delay(40);//40ms=25fps
       delay(renderframedelay);//25fps
@@ -477,12 +464,10 @@ void setup() {
     ?play
     ?delete
  */
-  //server.on("/status.ard", handle );//infos
-  /* 
-      {"PROGversion":"", "SD":"", "Aniaktiv":""}
-  */
   
-  //server.on("/list.ard", handle );//Dateiliste komplett
+  server.on("/status.ard", handlestatus );//infos
+  server.on("/list.ard", handleDateiliste );//Dateiliste komplett
+  server.on("/draw.ard", handleDraw );
   /*
       {
       "Ordnert":"",
@@ -499,8 +484,11 @@ void setup() {
   server.onNotFound(handleNotFound);//Dateien vom Speicher oder 404
   
   server.begin();
-  udp.begin(localPort);
+//  udp.begin(localPort);
 
+  //NTP start
+  oNtp.begin();
+  
   digitalWrite(LED_PIN, false);
 
   Serial.println("TaskCreate");
@@ -704,6 +692,7 @@ void coreTask( void * pvParameters ){
         if(wifiaktiv){
           ArduinoOTA.handle();
           server.handleClient();
+		  oNtp.update();
           handleTime();
         }
         /*  
@@ -747,62 +736,14 @@ void loop() {// the main loop functions execute on core 1
 
 void handleTime(){
   unsigned long currentMillis = millis();
-  if( currentMillis - ntp_previousMillis > ntp_zeitchecker){//alle 5min
-     ntp_previousMillis = currentMillis;
-     getNTPTime();
-     ntp_zcheckerversuche=0;
-  }
-  if(ntpangefragt && currentMillis - ntp_previousMillisWaitNTP > ntp_zeitcheckerWaitNTP){//1sec
-     ntp_previousMillisWaitNTP = currentMillis;
-     Serial.print("check NTP...");
-     ntp_zcheckerversuche++;
-     Serial.println(ntp_zcheckerversuche);
-     if(hatntptime && ntp_zcheckerversuche>ntp_zcheckerversuchemax){
-      ntpangefragt=false;
-      ntp_zcheckerversuche=0;
-     }
-     checkNTPTime();
-  }
-  if(hatntptime && currentMillis - uhr_previousMillis > uhr_zeitchecker){//Uhr alle Sec aktualisieren
-      uhr_previousMillis = currentMillis;
-      
-      unsigned long diff = (millis()-ntp_timestamp)/1000;
-      unsigned long epoch = ntp_unixtime + diff + ntp_timeDIFF;//sec
-      bool szchecked=false;
-      if(ntp_year>0){
-        if(summertime (ntp_year,ntp_month, ntp_day, ntp_stunde, 1)){
-          epoch +=3600;//sec=1h; Sommerzeit +1h 
-        }
-        szchecked=true;
-      }
-      unsigned long tday = epoch / 86400L + 3;
-     
-      ntp_wochentag=(tday) % 7;            // Since January 1, 1970 was a Thursday the results are: 0=Do
-      ntp_stunde=(epoch  % 86400L) / 3600;
-      ntp_minute=(epoch  % 3600) / 60;
-      ntp_secunde=epoch % 60;
-
-     
-      time_t rawtime = epoch;
-      struct tm * ti;
-      ti = localtime (&rawtime);
-      ntp_year=ti->tm_year + 1900;
-      ntp_month=ti->tm_mon + 1;
-      ntp_day=ti->tm_mday;
-
-      if(szchecked)sommerzeitchecked=true;
-      /*
-      ti->tm_hour; ti->tm_min;ti->tm_sec;
-      */
-  }
- /* if(hatntptime && currentMillis - tim_previousMillis > tim_zeitchecker){//Timer alle 30sec checken
+  /*if(oNtp.hatTime() && currentMillis - tim_previousMillis > tim_zeitchecker){//Timer checken
       tim_previousMillis = currentMillis;
-      if(last_minute!=ntp_minute){//nur 1x pro min
+      if(last_minute!=oNtp.getminute()){//nur 1x pro min
         checktimer();
-        last_minute=ntp_minute;
+        last_minute=oNtp.getminute();
      }
    }
-  */  
+   */
 }
 
 
@@ -969,6 +910,10 @@ void handleSerial(){
             else
             if(svalue=="gettime")
                 {
+                  byte ntp_stunde   =oNtp.getstunde();
+                  byte ntp_minute   =oNtp.getminute();
+                  byte ntp_secunde  =oNtp.getsecunde();
+  
                   if(ntp_stunde<10)Serial.print("0");
                   Serial.print(String(ntp_stunde)+":");
                   if(ntp_minute<10)Serial.print("0");
@@ -979,10 +924,10 @@ void handleSerial(){
             else 
             if(svalue=="getdate")
                 {
-                  if(ntp_day<10)Serial.print("0");
-                  Serial.print(String(ntp_day)+".");
-                  if(ntp_month<10)Serial.print("0");
-                  Serial.println(String(ntp_month)+"."+String(ntp_year));
+                  if(oNtp.getday()<10)Serial.print("0");
+                  Serial.print(String(oNtp.getday())+".");
+                  if(oNtp.getmonth()<10)Serial.print("0");
+                  Serial.println(String(oNtp.getmonth())+"."+String(oNtp.getyear()));
                 }
             else 
             if(svalue=="getwifistat")
@@ -995,7 +940,7 @@ void handleSerial(){
            else 
             if(svalue=="hatntp")
                 {
-                  if(hatntptime)
+                  if(oNtp.hatTime())
                     Serial.println("true");
                     else
                     Serial.println("false");
@@ -1029,7 +974,7 @@ void handleaktion(){//HTTP: /aktion?refresh=605
   
   for (uint8_t i = 0; i < server.args(); i++) {
     if (server.argName(i) == "settimekorr") {
-       ntp_timeDIFF= server.arg(i).toInt();
+       oNtp.setTimeDiff(server.arg(i).toInt());
        aktionen +="set_timekorr ";
        message +="\"settimekorr\":\"true\",\r\n";
     }
@@ -1110,6 +1055,105 @@ void handleRoot()
   }
   startTimer();
 }
+
+void handlestatus()
+{// /status.ard
+  stoppTimer(true);
+  // {"PROGversion":"0", "SD":"-", "Aniaktiv":"dateiname.ani"}
+  String html = "";
+  html+="{";
+  html+=" \"PROGversion\": \""+String(progversion)+"\",\r\n";
+  html+=" \"SD\":\"-\",\r\n";// nicht relevant
+  html+=" \"Aniaktiv\":\"\"\r\n";
+  html+="";
+  html+="}";
+  server.setContentLength(html.length());
+  server.send(200,"text/html",html);
+
+  startTimer();
+}
+
+void handleDraw(){
+  stoppTimer(true);
+  
+  String html = "{}";
+  server.setContentLength(html.length());
+  server.send(200,"text/html",html);
+
+  drawmodus="drawpic";
+  playfile="";
+    
+  char clientline[BUFSIZ+1];  //inputzeile
+  int buffpos=0;
+
+//
+  for (uint8_t i = 0; i < server.args(); i++) {
+    if (server.argName(i) == "draw") {
+       //server.arg(i)//  draw=f000
+
+        server.arg(i).toCharArray(clientline, BUFSIZ+1);
+        drawBefehl(clientline);
+       /*
+          f000
+          l23052331024
+          p2231024
+          B             swap.puffer
+       */
+    }
+    if (server.argName(i) == "ti") {
+       //server.arg(i)//  ti=1524083533262
+    }
+  }  
+  startTimer();
+}
+
+
+void handleDateiliste()
+{//Dateiliste komplett
+  stoppTimer(true);
+  
+  String html ="";
+  int filecounter=0;
+  html+="{";
+  html+=" \"Ordner\":\"\",\r\n";
+  html+=" \"List\":[\r\n";
+
+ /*{
+      "Ordner":"",
+      "List":[
+          {"d":"2014-01-30 13:59:11","n":"INDEX.HTM","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
+      ]}
+  */
+  String fileName; 
+  File root = SPIFFS.open("/");
+  if(root.isDirectory()){
+        File file = root.openNextFile();//alle Dateien im Hauptverzeichnis
+        while(file){
+                if(!file.isDirectory()){//keine Ordner: Datei
+                    fileName=file.name();
+                    if(filecounter>0)html+=",";                      
+                    html+="{";
+                    html+="\"d\":\"2014-01-30 13:59:11\",";  //d+s optional (kein d+s wenn Ordner oder backlink)
+                    html+="\"n\":\""+fileName+"\",";
+                    html+="\"s\":"+String(file.size());
+                   // html+=" ";
+                    html+="}\r\n";
+                    filecounter++;
+                }
+                file = root.openNextFile();
+        }
+  }
+  
+  html+="";
+  html+="";
+  html+=" ]";
+  html+="}";
+  server.setContentLength(html.length());
+  server.send(200,"text/html",html);
+  
+  startTimer();
+}
+
 
 
 void handleSetup(){//setup, upload,...
@@ -1227,7 +1271,13 @@ void handleData(){// data.json
   message +="\"aniaktiv\":\""+getINI("aniaktiv")+"\",\r\n";
  
 
-//  ntp_stunde
+//  
+  byte ntp_wochentag=oNtp.getwochentag();
+  byte ntp_stunde=oNtp.getstunde();
+  byte ntp_minute=oNtp.getminute();
+  byte ntp_secunde=oNtp.getsecunde();
+
+
   message +="\"lokalzeit\":\"";
   if(ntp_stunde<10)message+="0";
   message+=String(ntp_stunde)+":";
@@ -1240,19 +1290,19 @@ void handleData(){// data.json
   message +="\"tag\":"+String(ntp_wochentag)+",\r\n";
 
   message +="\"datum\":{\r\n";
-  message +=" \"year\":"+String(ntp_year)+",\r\n";
-  message +=" \"month\":"+String(ntp_month)+",\r\n";
-  message +=" \"day\":"+String(ntp_day)+",\r\n";
+  message +=" \"year\":"+String(oNtp.getyear())+",\r\n";
+  message +=" \"month\":"+String(oNtp.getmonth())+",\r\n";
+  message +=" \"day\":"+String(oNtp.getday())+",\r\n";
+  message +=" \"timekorr\":"+String(oNtp.getUTCtimediff())+",\r\n";
 
 // input parameters: "normal time" for year, month, day, hour and tzHours (0=UTC, 1=MEZ)  
-  if(summertime (ntp_year,ntp_month, ntp_day, ntp_stunde, 1))
+  if(oNtp.isSummertime())
     message +=" \"summertime\":true\r\n";
   else
     message +=" \"summertime\":false\r\n";
   message +="},\r\n";
 
-  message +="\"timekorr\":"+String(ntp_timeDIFF);
-  /**/
+ 
  
    message +="\"macadresse\":\""+macadresse+"\",\r\n";
    message +="\"requeststopp\":\""+String(requeststopp)+"\",\r\n";
@@ -1468,154 +1518,6 @@ bool handleFileRead(String path) {
   return false;
 }
 
-//NTP
-// send an NTP request to the time server at the given address
-unsigned long sendNTPpacket(IPAddress& address)
-{
-  Serial.println("sending NTP packet...");
-  // set all bytes in the buffer to 0
-  memset(packetBuffer, 0, NTP_PACKET_SIZE);//48byte
-  // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
-  packetBuffer[0] = 0b11100011;   // LI (11), Version (100), Mode (011)3=client
-  packetBuffer[1] = 0;     // Stratum, or type of clock
-  packetBuffer[2] = 6;     // Polling Interval (2046 sec)
-  packetBuffer[3] = 0xEC;  // Peer Clock Precision
-  // 8 bytes of zero for Root Delay & Root Dispersion
-  packetBuffer[12]  = 49;   //Reference Identifier source identifier or 0 (Quell-IP)
-  packetBuffer[13]  = 0x4E; //78
-  packetBuffer[14]  = 49;   //            49(1).78(N).49(1).42(*)   192(À).53(5).103(g).103(g)|212(Ô).161(¡).179(³).138(Š)
-  packetBuffer[15]  = 52;   //
-
-  // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:
-  udp.beginPacket(address, 123); //NTP requests are to port 123
-  udp.write(packetBuffer, NTP_PACKET_SIZE);
-  udp.endPacket();
-}
-void getNTPTime(){
-  Serial.print("ServerNTP:");
-  Serial.print(ntpServerName);
-  Serial.print(" ");
-  if(WiFi.hostByName(ntpServerName, timeServerIP)){
-    Serial.println(timeServerIP);
-    sendNTPpacket(timeServerIP); // send an NTP packet to a time server
-    ntpangefragt=true;
-  }
-  else{
-     Serial.println("noIP");
-     ntpangefragt=false;
-     if ( WiFi.status() != WL_CONNECTED ) Serial.println("no connect");
-     //Reeboot ?
-     //OTA.setup(WIFI_SSID, WIFI_PASSWORD, esp_hostname);
-
-    //digitalWrite(LED_PIN, true);
-    //delay(500);
-    //digitalWrite(LED_PIN, false);
-    //delay(250);
-  }
-  yield();
-}
-void checkNTPTime(){ 
-  int cb = udp.parsePacket();
-  if (cb) {
-    ntp_timestamp=millis();
-    //Serial.print("empfangen NTP:");
-    //Serial.println(cb);
-    udp.read(packetBuffer, NTP_PACKET_SIZE); // read the packet into the buffer (48bytes)
-/*
-   https://tools.ietf.org/html/rfc958
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |LI |   Status  |      Type     |           Precision           |  0,1,2,3
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                       Estimated Error                         |  4,5,6,7
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                     Estimated Drift Rate                      |  8,9,10,11
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                  Reference Clock Identifier                   | 12,13,14,15
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                                                               |
-   |                 Reference Timestamp (64 bits)                 | 16-23
-   |                                                               |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                                                               |
-   |                 Originate Timestamp (64 bits)                 | 24-31
-   |                                                               |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                                                               |
-   |                  Receive Timestamp (64 bits)                  | 32-39
-   |                                                               |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                                                               |
-   |                  Transmit Timestamp (64 bits)                 | 40-43  Sekunden seit dem 1. Januar 1900 00:00:00 Uhr
-   |                                                               | 44-47  Sekundenbruchteil
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-    40,41 highWord secsSince1900
-    42,43 lowWord  secsSince1900
-
-*/
-    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
-    // combine the four bytes (two words) into a long integer
-    // this is NTP time (seconds since Jan 1 1900):
-    unsigned long secsSince1900 = highWord << 16 | lowWord;
-    Serial.print("Seconds since Jan 1 1900 = " );
-    Serial.println(secsSince1900);
-    ntp_thetime=secsSince1900;
-    // now convert NTP time into everyday time:
-    Serial.print("Unix time = ");
-    // Unix time starts on Jan 1 1970. In seconds, that's 2208988800:
-    const unsigned long seventyYears = 2208988800UL;
-    // subtract seventy years:
-    unsigned long epoch = secsSince1900 - seventyYears;
-    
-    // print Unix time:
-    ntp_unixtime=epoch;
-    Serial.println(epoch);
-    
-    Serial.print("The UTC time is ");       // UTC is the time at Greenwich Meridian (GMT)
-    Serial.print((epoch  % 86400L) / 3600); // print the hour (86400 equals secs per day)
-
-    ntp_stunde=(epoch  % 86400L) / 3600;
-    
-    Serial.print(':');
-    if ( ((epoch % 3600) / 60) < 10 ) {
-      // In the first 10 minutes of each hour, we'll want a leading '0'
-      Serial.print('0');
-    }
-    Serial.print((epoch  % 3600) / 60); // print the minute (3600 equals secs per minute)
-    ntp_minute=(epoch  % 3600) / 60;
-    
-    Serial.print(':');
-    if ( (epoch % 60) < 10 ) {
-      // In the first 10 seconds of each minute, we'll want a leading '0'
-      Serial.print('0');
-    }
-    Serial.println(epoch % 60); // print the second
-    ntp_secunde=epoch % 60;
-
-    ntp_zeitchecker= ntp_zeitcheckeriftime;
-    hatntptime=true;
-    ntpangefragt=false;
-  }
-}
-
-
-//https://github.com/gmag11/NtpClient/blob/master/src/NTPClientLib.cpp
-// input parameters: "normal time" for year, month, day, hour and tzHours (0=UTC, 1=MEZ)
-bool summertime (int year, byte month, byte day, byte hour, byte tzHours)
-{
-    if ((month < 3) || (month > 10)) return false; // keine Sommerzeit in Jan, Feb, Nov, Dez
-    if ((month > 3) && (month < 10)) return true; // Sommerzeit in Apr, Mai, Jun, Jul, Aug, Sep
-    if (month == 3 && (hour + 24 * day) >= (1 + tzHours + 24 * (31 - (5 * year / 4 + 4) % 7)) 
-     || month == 10 && (hour + 24 * day) < (1 + tzHours + 24 * (31 - (5 * year / 4 + 1) % 7)))
-        return true;
-    else
-        return false;
-}
 
 //------------------------RGBMatrix----------------------------------
 void getRGB(int hue, int sat, int val, int colors[3]) {
@@ -1684,11 +1586,13 @@ bool setplayfiledata(String filname){
   if (SPIFFS.exists(filname)){
     anifilepos=0;
     anifileframecounter=0;
+    drawmodus="playfile";
     playfile=filname;
     return true;
    }
    else{//nicht existent
     playfile="";
+    drawmodus="";
     anifilepos=0;
     anifileframecounter=0;
     return false;
