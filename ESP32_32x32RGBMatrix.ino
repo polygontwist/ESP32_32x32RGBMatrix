@@ -86,7 +86,7 @@ String drawmodus="";
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.50";//ota fs ntp ti ini rgb
+const char* progversion  = "32x32 RGB-Matrix V0.53";//ota fs ntp ti ini rgb
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
@@ -139,7 +139,7 @@ void IRAM_ATTR onDisplayUpdate() {
 void IRAM_ATTR playafileframe(int16_t framedelay){//40ms=25fps
    File aniFile;
    int zeichen=0;
-   char clientline[BUFSIZ+1];  //inputzeile
+   char clientline[BUFSIZ+1];  //inputzeile max.256 Zeichen
    int buffpos=0;
    int filesize=0;
    bool framereading=true;
@@ -238,7 +238,7 @@ void drawTask( void * pvParameters ){
            }
            else
            if(drawmodus=="drawpic"){
-                //Puffer?
+                //nix tun
            }           
            else
            {
@@ -456,15 +456,8 @@ void setup() {
   server.on("/status.ard", handlestatus );//infos
   server.on("/list.ard", handleDateiliste );//Dateiliste komplett
   server.on("/draw.ard", handleDraw );
-  /*
-      {
-      "Ordnert":"",
-      "List":[
-          {"d":"2014-01-30 13:59:11","n":"INDEX.HTM","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
-      ]}
-  */
-  //upload.htm
-   
+ 
+  //upload   
   server.on("/upload", HTTP_POST, []() {
     server.send(200, "text/plain", "");
   }, handleFileUpload);
@@ -1062,20 +1055,47 @@ void handlestatus()
 
 void handleDraw(){
   String html = "{}";
-  server.setContentLength(html.length());
-  server.send(200,"text/html",html);
   drawmodus="drawpic";
   playfile="";    
-  char clientline[BUFSIZ+1];  //inputzeile
+  char clientline[BUFSIZ+1];  //inputzeile max.256 Zeichen !
+  char cbuffer[BUFSIZ+1];  //inputzeile max.256 Zeichen !
   int buffpos=0;
+  uint8_t ib=0;
 //
   for (uint8_t i = 0; i < server.args(); i++) {
     if (server.argName(i) == "draw") {
        //server.arg(i)//  draw=f000
         //stoppTimer(false);
-        server.arg(i).toCharArray(clientline, BUFSIZ+1);
-        drawBefehl(clientline);
-        matrix.update(); 
+
+        //String s=server.arg(i); //test auf "," ->mehrere Befehle
+        
+        server.arg(i).toCharArray(clientline, BUFSIZ+1); //in Array of Char konvertieren
+        
+        if(server.arg(i).indexOf(',')>-1){
+          ib=0;
+          for(uint8_t t=0;t<BUFSIZ;t++){
+            if(clientline[t]==',' || clientline[t]==0 || clientline[t]=='&'){
+              cbuffer[ib]=0;
+              if(ib>0)drawBefehl(cbuffer);
+              ib=0;
+            }
+            else{
+               cbuffer[ib]=clientline[t];
+               ib++;
+               if(ib==BUFSIZ){
+                   cbuffer[ib]=0;
+                   drawBefehl(cbuffer);
+                   ib=0;
+               }
+            }
+          }
+        }
+        else{
+          drawBefehl(clientline);
+        }
+        
+        
+        //matrix.update();
         //startTimer();
        /*
           f000
@@ -1088,7 +1108,8 @@ void handleDraw(){
        //server.arg(i)//  ti=1524083533262
     }
   }  
- 
+  server.setContentLength(html.length());
+  server.send(200,"text/html",html);
 }
 
 
@@ -1619,68 +1640,51 @@ uint32_t get_int(char *cahrlist, uint8_t pos,uint16_t len){
   return re;
 }
 
-void drawBefehl(char *clientline){
-  if(clientline[0]=='f'){
-    matrix.fillScreen(get_color(clientline,1)); 
+void drawBefehl(char *befehl){
+  if(befehl[0]=='f'){
+    matrix.fillScreen(get_color(befehl,1)); 
   }
-  if(clientline[0]=='l'){
-           /* matrix.drawLine(get_int(clientline,1,2),
-                            get_int(clientline,3,2),
-                            get_int(clientline,5,2),
-                            get_int(clientline,7,2),
-                            get_color(clientline,9)
-                            );*/
-            matrix.drawLine(get_int(clientline,1,2),
-                            get_int(clientline,3,2),
-                            get_int(clientline,5,2),
-                            get_int(clientline,7,2),
-                            matrix.AdafruitColor( 
-                                get_int(clientline,9,1)*16,
-                                get_int(clientline,10,1)*16,
-                                get_int(clientline,11,1)*16
-                                )
-                            );
+  if(befehl[0]=='l'){
+          matrix.drawLine(get_int(befehl,1,2),
+                          get_int(befehl,3,2),
+                          get_int(befehl,5,2),
+                          get_int(befehl,7,2),
+                          matrix.AdafruitColor( 
+                              get_int(befehl,9,1)*16,
+                              get_int(befehl,10,1)*16,
+                              get_int(befehl,11,1)*16
+                              )
+                          );
   }
-  if(clientline[0]=='p'){
-          /*  matrix.drawPixel(get_int(clientline,1,2),
-                             get_int(clientline,3,2), 
-                             get_color(clientline,5)
-                            );*/
-            matrix.drawPixel(get_int(clientline,1,2),
-                             get_int(clientline,3,2), 
-                             matrix.AdafruitColor( 
-                                get_int(clientline,5,1)*16,
-                                get_int(clientline,6,1)*16,
-                                get_int(clientline,7,1)*16
-                                )
-                            );//*16
+  if(befehl[0]=='p'){
+         matrix.drawPixel(get_int(befehl,1,2),
+                         get_int(befehl,3,2), 
+                         matrix.AdafruitColor( 
+                            get_int(befehl,5,1)*16,
+                            get_int(befehl,6,1)*16,
+                            get_int(befehl,7,1)*16
+                            )
+                        );//*16
   }
-  
-  if(clientline[0]=='B'){
+  if(befehl[0]=='r'){
+    //rxxyybbhhrgb -> rechteck linke x,y(0...99) breite(0..99) höhe(0..99) color(0-f,0-f,0-f)
+         matrix.fillRect(get_int(befehl,1,2), 
+                        get_int(befehl,3,2),
+                        get_int(befehl,5,2),
+                        get_int(befehl,7,2), 
+                        matrix.AdafruitColor( 
+                                    get_int(befehl,9,1)*16,
+                                    get_int(befehl,10,1)*16,
+                                    get_int(befehl,11,1)*16
+                                    )
+                    );
+  }
+ 
+  if(befehl[0]=='B'){
+     matrix.update();
      // matrix.swapBuffers(false);
   }
-  //if(cahrlist[0]=="d"){}//wurde schon ausgewertet
+  //if(befehl[0]=="d"){}//wurde schon ausgewertet
   
 }
-
-
-
-
-/*
-
-if (SPIFFS.exists(filname)){
-    playfile=filname;
-    File aniFile;
-    char zeichen;
-    aniFile= SPIFFS.open(filname, "r");
-      if(aniFile){
-          //playfiledata=aniFile.readString();
-        while (iniFile.available()){
-               zeichen=char(iniFile.read());  
-               playfiledata+=zeichen;
-          }
-          re=true;
-          playfile=filname;// "/filename.ani";
-      }
-    aniFile.close();*/
 
