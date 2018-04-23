@@ -31,4 +31,5 @@ Der Quellcode ist noch "etwas" unübersichtlich... das mit dem Auslagern/include
 * OTA 
 
 # Demo
-* https://www.instagram.com/p/Bhw8z1TAUns
+* https://www.instagram.com/p/Bhw8z1TAUns 
+* https://www.instagram.com/p/Bh4uAPDgLLZ Bildansehen: tranfer speed up
