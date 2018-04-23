@@ -1074,13 +1074,13 @@ void handleDraw(){
         if(server.arg(i).indexOf(',')>-1){
           ib=0;
           for(uint8_t t=0;t<BUFSIZ;t++){
-            if(clientline[t]==',' || clientline[t]==0 || clientline[t]=='&'){
+            if(clientline[t]==',' || clientline[t]==0 || clientline[t]=='&'){//trenner oder ende
               cbuffer[ib]=0;
               if(ib>0)drawBefehl(cbuffer);
               ib=0;
             }
             else{
-               cbuffer[ib]=clientline[t];
+               cbuffer[ib]=clientline[t];//umkopieren
                ib++;
                if(ib==BUFSIZ){
                    cbuffer[ib]=0;
