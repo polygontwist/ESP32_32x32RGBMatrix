@@ -86,7 +86,7 @@ String drawmodus="";
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.53";//ota fs ntp ti ini rgb
+const char* progversion  = "32x32 RGB-Matrix V0.54";//ota fs ntp ti ini rgb
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
@@ -108,7 +108,10 @@ char MAC_char[18];
 String macadresse="";
 bool wifiaktiv=false;
 
-
+#define dateiBUFSIZ 51200 //200kb
+char dateipuffer[dateiBUFSIZ];
+int dateiMax=0;
+//dateipuffer[0]='\0';
 
 unsigned long uhr_previousMillis=0;
 unsigned long uhr_zeitchecker= 1000;//ms = 1sec
@@ -137,91 +140,54 @@ void IRAM_ATTR onDisplayUpdate() {
 
 
 void IRAM_ATTR playafileframe(int16_t framedelay){//40ms=25fps
+  if(dateiMax<1)return;
+
    File aniFile;
    int zeichen=0;
    char clientline[BUFSIZ+1];  //inputzeile max.256 Zeichen
    int buffpos=0;
-   int filesize=0;
    bool framereading=true;
-   
+
    anifileframecounter-=framedelay;//verstrichene Zeit abziehen
    if(anifileframecounter>0)return;//abzuwartende Zeit noch nicht vergangen, abrechen und warten
    //Zeit abgelaufen, lese Frame
    anifileframecounter=0;
-  
-   //Frame laden? ansonsten nix machen - frameinhalt bleibt stehen
-   
-//portMUX_TYPE adc_spinlock = portMUX_INITIALIZER_UNLOCKED;
-//taskENTER_CRITICAL();
-//portENTER_CRITICAL(&adc_spinlock);  
-//portDISABLE_INTERRUPTS();
 
-// timerAlarmDisable(displayUpdateTimer);//     
-   
-   //TODO: cachen?
-   stoppTimer(true);//false
+  if(anifilepos>dateiMax-1)anifilepos=0;
 
-   //open file
-   aniFile= SPIFFS.open(playfile, "r");
-   if(aniFile){
-     //seek pos
-     filesize=aniFile.size();
-     if(anifilepos>filesize-1)anifilepos=0;
-   
-     //Serial.print(filesize,DEC);
-     //Serial.print(" seekto:");
-     //Serial.println(anifilepos,DEC);
-     if(!aniFile.seek(anifilepos, SeekSet)){//offset, mode-> SeekSet from bytes from the beginning
-       //error
-       // Serial.println("seekerror");
-     };
-     
-     //read frame
-     while (framereading){//Zeilenweise lesen
-        zeichen=aniFile.read(); //->block interrrupt!
-        anifilepos++;
-        buffpos=0;
-        
-        while(zeichen>31){ //Dateiende(-1)oder eine Zeileende ('\n'=13)
+   while (framereading){
+      zeichen=dateipuffer[anifilepos];
+      anifilepos++;
+      buffpos=0;
+      
+      while(zeichen>31){ //Dateiende(-1)oder eine Zeileende ('\n'=13)
           clientline[buffpos] =zeichen;//Array of Chars
           buffpos++;
           if (buffpos >= BUFSIZ-1){framereading=false;break;}//Buffer am überlaufen, abbrechen
-          zeichen=aniFile.read();
+          zeichen=dateipuffer[anifilepos];
           anifilepos++;
-        }
-        clientline[buffpos]=0; //null terminierunng
+       }
+       clientline[buffpos]=0; //null terminierunng
+    
+      if(buffpos>1){//Zeile auswerten
+          //zeilenende, zeile auswerten & zeichnen
+          if (clientline[0]=='d'){
+            //Frame fertig, set new delaytime
+            anifileframecounter=get_int(clientline,1,4)-framedelay;//
+            if(anifileframecounter<0)anifileframecounter=0;
+            framereading=false;
+            //fertig break->while (iniFile.available())
+          }
+          //Zeichenbefehle
+          drawBefehl(clientline);
+      }
 
-        if(buffpos>1){//Zeile auswerten
-            //zeilenende, zeile auswerten & zeichnen
-            if (clientline[0]=='d'){
-              //Frame fertig, set new delaytime
-              anifileframecounter=get_int(clientline,1,4)-framedelay;//
-              if(anifileframecounter<0)anifileframecounter=0;
-              framereading=false;
-              //fertig break->while (iniFile.available())
-            }
-            //Zeichenbefehle
-            drawBefehl(clientline);
-        }
-        
-        if(zeichen<0 || !aniFile.available()){ //dateiende         
-          anifilepos=0;//Dateizeiger auf Anfang
-          framereading=false; //fertig break->while (iniFile.available())
-        }/**/
-        //framereading=false;
-        //anifileframecounter=40*25;//1sec
-     }
-     
+      if(zeichen<0 || (anifilepos>dateiMax-1) ){ //dateiende         
+        anifilepos=0;//Dateizeiger auf Anfang
+        framereading=false; //fertig break->while (iniFile.available())
+      }
+      
    }
-   aniFile.close();//close
-   
-startTimer();
-   //taskEXIT_CRITICAL();
-//portEXIT_CRITICAL(&adc_spinlock);
-//portENABLE_INTERRUPTS();
-
-// timerAlarmEnable(displayUpdateTimer);
-
 }
 
 #define renderframedelay 40 //ms 40=25fps
@@ -366,6 +332,8 @@ void setup() {
   
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, true);
+
+  dateipuffer[0]=0;
 
   //SPIFFS
   SPIFFS.begin();
@@ -1588,12 +1556,39 @@ void getRGB(int hue, int sat, int val, int colors[3]) {
 
 
 bool setplayfiledata(String filname){
+  File aniFile;
+  int zeichen=0;
+  int filesize=0;
+  
   if (SPIFFS.exists(filname)){
     anifilepos=0;
     anifileframecounter=0;
-    drawmodus="playfile";
-    playfile=filname;
-    return true;
+
+    dateiMax=0;
+    anifileframecounter=0;
+    
+    aniFile= SPIFFS.open(filname, "r");
+    if(aniFile){
+      filesize=aniFile.size();
+      if(filesize<dateiBUFSIZ){
+        zeichen=aniFile.read();
+        dateiMax=0;
+        while(zeichen>-1 && aniFile.available() ){
+          
+          dateipuffer[dateiMax]=zeichen;
+          dateiMax++;
+          
+          zeichen=aniFile.read();
+        }
+        dateipuffer[dateiMax]=0;
+        
+        drawmodus="playfile";
+        playfile=filname;
+      }
+      //else "datei zu groß"
+    }
+    
+    return (dateiMax>0);
    }
    else{//nicht existent
     playfile="";

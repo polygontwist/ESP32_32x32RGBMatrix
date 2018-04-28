@@ -1,6 +1,10 @@
 "use strict";
 /*
-	Version 15-3-2014
+	Version 24-04-2018
+TODO:
+-save File (request von sonoffs20-Timer!)
+
+	Version 15-43-2014
 TODO: 
 -colorpicker
 -game
@@ -197,7 +201,7 @@ function c_menue(ziel){
 					a.o=o;
 					a.data=oList[t];
 					a.liste=oList;
-					a.innerHTML=oList[t].txt;
+					a.innerHTML=oList[t].txt;//.split('/').join('');
 					a.onclick=this.clickDD;
 					a.menue=ul;
 					a.basis=this;
@@ -894,6 +898,7 @@ function c_Editor(ziel,wos){
 			c2++;
 			sendcounter++;
 		}
+		console.log(sendcounter,s);
 		
 		if(s.length>0){
 				showSta("send "+sendcounter+"/"+senddata.length);
@@ -1544,7 +1549,7 @@ var wOS=function(zielid){
 
 	console.log(ordner,dat);			
 	  for(var t=0;t<dat.List.length;t++){
-		s=dat.List[t];				//  {"d":"2014-01-30 13:59:11","n":"INDEX.HTM","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
+		s=dat.List[t];				//  {"d":"2014-01-30 13:59:11","n":"/test.ANI","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
 		if(s.n==undefined)break;
 		li=cE("li",ul,this);		
 		a=cE("span",li,this);
@@ -1560,7 +1565,7 @@ var wOS=function(zielid){
 		
 		var aa=cE("a",li,this);
 		aa.basis=this;
-		aa.innerHTML=s.n;
+		aa.innerHTML=s.n.split('/').join('');
 		if(s.n!="..")s.n=ordner+s.n;
 		aa.href=s.n;
 		aa.target="_blank";
@@ -1674,12 +1679,13 @@ var wOS=function(zielid){
 			}
 	}
 
-	var parsePS=function(data){
+	var parseDelFile=function(data){
 		console.log(data);
+		//reload seite
 	};
 	
 	var ANIstop=function(e){
-		ladeDaten("/aktion?stop="+this.obj.n,parsePS,this);//aktion?
+		ladeDaten("/aktion?stop="+this.obj.n);
 		e.preventDefault();
 	}	
 	var aktivanibutt=undefined;
@@ -1692,7 +1698,7 @@ var wOS=function(zielid){
 	var ANIplay=function(e){
 		if(this.stat==""){
 			resetPlayButt();
-			ladeDaten("/aktion?play="+this.obj.n,parsePS,this);//aktion?
+			ladeDaten("/aktion?play="+this.obj.n);
 			aktivanibutt=this;
 			this.stat="p";
 			this.innerHTML=tra("stop");
@@ -1706,11 +1712,12 @@ var wOS=function(zielid){
 	}
 	var deleteFile=function(e){
 		if(confirm(tra("dlg1")))
-			ladeDaten(this.obj.n+"?delete="+this.obj.n,parsePS,this);
+			ladeDaten(this.obj.n+"?delete="+this.obj.n,parseDelFile,this);
 		e.preventDefault();
 	}	
 	
-	var editFile=function(){
+	var editFile=function(e){
+		this.obj.n=this.obj.n.split('/').join('');
 		console.log(this.obj.n);
 		showEditor(this.obj.n);
 	}
