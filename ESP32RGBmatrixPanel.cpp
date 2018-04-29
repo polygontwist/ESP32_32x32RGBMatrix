@@ -1,5 +1,6 @@
 #include "ESP32RGBmatrixPanel.h"
-#include "./../../hardware/espressif/esp32/cores/esp32/esp32-hal-gpio.h"
+//#include "./../../hardware/espressif/esp32/cores/esp32/esp32-hal-gpio.h"
+#include <esp32-hal-gpio.h>
 //G1	R1 |
 //GND	B1 |
 //G2	R2 |
@@ -38,7 +39,7 @@ ESP32RGBmatrixPanel::ESP32RGBmatrixPanel() : Adafruit_GFX(COLUMNS, ROWS)
 }
 
 
-void ESP32RGBmatrixPanel::initGPIO()
+void IRAM_ATTR ESP32RGBmatrixPanel::initGPIO()
 {
 	pinMode(R1, OUTPUT);
 	pinMode(G1, OUTPUT);
@@ -90,7 +91,7 @@ void ESP32RGBmatrixPanel::black()
 }
 
 #define loops 10
-void ESP32RGBmatrixPanel::update()
+void IRAM_ATTR ESP32RGBmatrixPanel::update()
 {
 	if (loopNr == 0) drawRow();			//Display OFF-time (25 µs). 
 	if (loopNr == loopNrOn) on();				//Turn Display ON
@@ -157,7 +158,7 @@ const uint8_t PROGMEM gamma8[] = {
 
 
 
-void ESP32RGBmatrixPanel::drawRow()
+void IRAM_ATTR ESP32RGBmatrixPanel::drawRow()
 {
 	gpio = GPIO.out;
 	SetPinFast(OE, HIGH);
@@ -201,7 +202,7 @@ void ESP32RGBmatrixPanel::drawRow()
 
 
 
-void ESP32RGBmatrixPanel::on()
+void IRAM_ATTR ESP32RGBmatrixPanel::on()
 {
 	GPIO.out_w1tc = ((uint32_t)1 << OE);
 }

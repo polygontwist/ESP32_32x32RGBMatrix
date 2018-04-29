@@ -496,7 +496,7 @@ void setup() {
 
 
 void stoppTimer(bool matrixblank){
-   requeststopp++;
+  requeststopp++;
    if(timeriststopped)return;
    timeriststopped=true;
    if(matrixblank){
@@ -509,6 +509,7 @@ void stoppTimer(bool matrixblank){
    timerAlarmDisable(displayUpdateTimer);//  
    timerEnd(displayUpdateTimer);
    displayUpdateTimer=NULL;   
+   
 }
 void startTimer(){
   requeststopp--;

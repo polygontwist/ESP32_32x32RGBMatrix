@@ -107,7 +107,7 @@ public:
 	/* reset all Pixels to black */
 	void black();
 	/*  call every 1-3µs! */
-	void update();
+	void IRAM_ATTR update();
 	/*  from 0 = off to 10 = max */
 	void setBrightness(byte brightness);
 	/*  returns Color for call Adafruit_GFS methods */
@@ -118,9 +118,9 @@ public:
 private:
 	volatile byte loopNr = 0;
 	volatile byte loopNrOn = 0;
-	void initGPIO();
-	void drawRow();
-	void on();
+	void IRAM_ATTR initGPIO();
+	void IRAM_ATTR drawRow();
+	void IRAM_ATTR on();
 	uint8 OE = 23;
 	uint8 CLK = 22;
 	uint8 LAT = 03;
