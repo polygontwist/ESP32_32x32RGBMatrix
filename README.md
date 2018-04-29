@@ -31,6 +31,6 @@ Der Quellcode ist noch "etwas" unübersichtlich... das mit dem Auslagern/include
 * OTA 
 
 # Demo
-* https://www.instagram.com/p/Bhw8z1TAUns 
-* https://www.instagram.com/p/Bh4uAPDgLLZ Bildansehen: tranfer speed up
-* https://www.instagram.com/p/BiIK3oYAFUu Datei abspielen über einem Hilfspuffer
+* Version 0.50: https://www.instagram.com/p/Bhw8z1TAUns 
+* Version 0.52: https://www.instagram.com/p/Bh4uAPDgLLZ Bildansehen: tranfer speed up
+* Version 0.54: https://www.instagram.com/p/BiIK3oYAFUu Datei abspielen über einem Hilfspuffer
