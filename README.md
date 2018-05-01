@@ -33,7 +33,7 @@ Bei Dateioperationen wird der Timer/xTask abgeschaltet, danach wieder gestartet 
 * Version 0.55: cleaning code,fix save-Editorfile, System jetzt mit allen Funktionen einsetzbar.
 
 # Installation
-Nach dem Flaschen der ESP32_32x32RGBMatrix.ino (mit Arduino), kann in der Seriellen Konsole die SSID und das Passwort Deines WLANS eingestellt werden. 
+Nach dem Flaschen der ESP32_32x32RGBMatrix.ino (mit Arduino), wird mit der seriellen Konsole (z.B. in Arduino-IDE) die SSID und das Passwort des WLANS eingestellt werden:
 * setpass=passwort
 * setssid=SSIDvomWLAN
 * sethost=hostname
@@ -42,7 +42,7 @@ Dann müssen noch folgende Dateien für das Editorsystem mit der upload-Funktion
 * 32x32.css (Aussehen)
 * 32x32.js (Funktionalität)
 * favicon.ico (optional)
-* index.htm (ersetzt inderne index.htm)
+* index.htm (ersetzt interne index.htm)
 
 Die Dateien befinden sich im Ordner "daten". Dort befinden sich auch Beispiele für die Animationen die hochgeladen werden können. Zu beachten ist das der internen Speicher nur Platz für ca 1,3MB hat - das reicht aber für einige Animationen.
 
