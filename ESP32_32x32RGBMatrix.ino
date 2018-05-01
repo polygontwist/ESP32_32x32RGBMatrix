@@ -86,7 +86,7 @@ String drawmodus="";
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.54";//ota fs ntp ti ini rgb
+const char* progversion  = "32x32 RGB-Matrix V0.55";//ota fs ntp ti ini rgb
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
@@ -191,7 +191,7 @@ void IRAM_ATTR playafileframe(int16_t framedelay){//40ms=25fps
 }
 
 #define renderframedelay 40 //ms 40=25fps
-void drawTask( void * pvParameters ){
+void IRAM_ATTR drawTask( void * pvParameters ){
     //String taskMessage = ">>>Task running on core ";
    // taskMessage = taskMessage + xPortGetCoreID();
    int lavercounter = 0;
@@ -363,8 +363,11 @@ void setup() {
   //Online Update 
   ArduinoOTA
     .onStart([]() {
-      stoptasks();
-     
+      istupdating=true;
+      playfile=""; 
+      stoppTimer(true);
+      vTaskDelete(xHandleDrawTask);
+
       String type;
       if (ArduinoOTA.getCommand() == U_FLASH)
         type = "sketch";
@@ -414,16 +417,7 @@ void setup() {
 
   server.on("/aktion",handleaktion);
 
-  // server.on("/*.ani",handleSetup); + start der so ->rgbmatrix
- /*
-    ?stop
-    ?play
-    ?delete
- */
-  
-  server.on("/status.ard", handlestatus );//infos
-  server.on("/list.ard", handleDateiliste );//Dateiliste komplett
-  server.on("/draw.ard", handleDraw );
+  server.on("/draw.ard", handleDraw );//Bild direkt anzeigen
  
   //upload   
   server.on("/upload", HTTP_POST, []() {
@@ -447,20 +441,17 @@ void setup() {
   matrix.setTextWrap(false);
   matrix.setTextSize(1);
 
+  String Faktiv=getINI("aniaktiv");
+  if(Faktiv!="")
+    setplayfiledata(Faktiv);
+
+
 
 //"PRO_CPU" and "APP_CPU".
 
   
   //Serial.println("Starting to create task on core 1");  
- /* xTaskCreatePinnedToCore(
-                    renderTask,   // Function to implement the task 
-                    "renderTask", // Name of the task 
-                    10000,      // Stack size in words 
-                    NULL,       //Task input parameter 
-                    1,          // 2 | portPRIVILEGE_BIT Priority of the task 
-                    &xHandleRenderTask,       // Task handle.
-                    1);  // tskNO_AFFINITY  0/1 Core where the task should run 
-*/
+ 
   xTaskCreatePinnedToCore(
                     drawTask,   // Function to implement the task 
                     "drawTask", // Name of the task 
@@ -523,111 +514,8 @@ void startTimer(){
    timeriststopped=false;
 }
 
-void stoptasks(){
-   istupdating=true;
-   stoppTimer(true);   
-   //vTaskDelete(xHandleCoreTask);
-   vTaskDelete(xHandleDrawTask);
-   //vTaskDelete(xHandleRenderTask);
-   Serial.println("Task & Timer stopped");
-}
 
 
-
-#define RenderWait 16
-int renderupdatecountermax=36;
-
-void renderTask( void * pvParameters ){//80Mhz 80000000Hz (240 MHz)
-    int ic;
-    int i;
-    int iloop;
-    byte temp=0;
-//4 Bitebenen = 320 + 640 + 1280 + 2560 = 4800 Ticks pro Zeile
- //32x32 208,33 Hz ~200Hz  200 t/sec -> 5ms
-
-//1.000.000us=1.000ms = 1sec
- 
-    Serial.println("rendertaskt "+String(portTICK_PERIOD_MS));//1
-    while(true){
-        //10 lops for brightness
-
-        for(ic=0;ic<15;ic++){
-          for(i=0;i<16;i++){//row/2
-          // matrix.updateRow();//2x16 Zeilen
-          // matrix.updateOn();
-           delayMicroseconds(renderupdatecountermax); //26 223 319 11
-          
-           //vTaskDelay(1); //vTaskDelay(timeValInMillisecs/portTICK_PERIOD_MS)
-
-           }
-        }
-       /* for(ic=0;ic<15;ic++){
-          for(i=0;i<16;i++){
-              matrix.updateOff();
-              matrix.updateOn();
-              delayMicroseconds(renderupdatecountermax);
-          }
-         // delayMicroseconds(renderupdatecountermax); //1490
-       }*/
-        //matrix.updateOff();
-        //delayMicroseconds(renderupdatecountermax); 
-
-// 60/sec  
-
-/*
-  (10*Helligkeit)
-  
-   15* für alle Farbabstufungen  -
-   32 Spalten                    /
-    2x16 Zeilen(2 gleichzeitig)  -> drawRow()+on()
-  
-*/
-
-         //10 lops for brightness
-        //matrix.update(); //Display OFF-time (25 µs). / 10 //call every 1-3µs!
-       /* delayMicroseconds(RenderWait); //2µs
-        matrix.update();//..|  9
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  |  8
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  |  7 
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  on 6
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  on 5
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  on 4
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  on 3
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//  on 2
-        delayMicroseconds(RenderWait); //2µs
-        matrix.update();//..on 1
-          //2µs
-          */
-        //*16
-       
-       // 16 MHz, for example, 1600 instructions in 0.1 ms.
-       // 80 MHz, for example, 8000 instructions in 0.1 ms.?
-     /*  */
-      //2 = 500
-      //800,154,190,210,216,603
-      //156
-     /*   int v;
-      for(i=0;i<renderupdatecountermax;i++){
-         v++;
-       }
-*/ 
-      //portTICK_PERIOD_MS = 10;
-      // vTaskDelay(1000 / portTICK_PERIOD_MS);
-    
-     // vTaskDelay(1);//Delay a task for a given number of ticks
-      
-      //delay(1);//ms
-       // yield();
-    }
- 
-}
 
 
 
@@ -641,33 +529,9 @@ void coreTask( void * pvParameters ){
         if(wifiaktiv){
           ArduinoOTA.handle();
           server.handleClient();
-		  oNtp.update();
+		      oNtp.update();
           handleTime();
         }
-        /*  
-        ctcounter++;
-       // if(int(ctcounter/10.0)*10==ctcounter) Serial.println('>'+String(ctcounter));
-        if(ctcounter>10){
-          String s=taskMessage+" coreTask ";
-          if(ntp_stunde<10)s+="0";
-          s+=String(ntp_stunde)+":";
-          if(ntp_minute<10)s+="0";
-          s+=String(ntp_minute)+":";
-          if(ntp_secunde<10)s+="0";
-          s+=String(ntp_secunde)+" ";
-          //s+=String(ctcounter,DEC);
-          if(wifiaktiv==true)
-            s+=" *";
-            else
-            s+=" -";
-         if(sommerzeitchecked==true)
-            s+=" SZ:checked";
-            else
-            s+=" SZ:nochecked";
-           
-          Serial.println(s);
-          ctcounter=0;
-        }*/
     }
     delay(100);   
   }
@@ -917,7 +781,6 @@ void handleSerial(){
 void handleaktion(){//HTTP: /aktion?refresh=605
   stoppTimer(true);
   
-
   String message = "{\r\n";
   String aktionen = "";
   
@@ -933,16 +796,7 @@ void handleaktion(){//HTTP: /aktion?refresh=605
        message +="\"sethost\":\""+esp_hostname+"\",\r\n";
        setINI("host",esp_hostname);
     }
-    
-    if (server.argName(i) == "refresh") {
-      aktionen+="setrenderupdatecountermax ";
-      if(server.arg(i).length()>0){
-        renderupdatecountermax=server.arg(i).toInt();
-        message +="\"renderupdatecountermax\":\""+String(renderupdatecountermax,DEC)+"\",\r\n";
-      }else{
-        message +="\"renderupdatecountermax\":\""+String(renderupdatecountermax,DEC)+"\",\r\n";
-      }
-    }
+        
     if (server.argName(i) == "play") {
        //load file to playfiledata
        Serial.print("play ");
@@ -953,6 +807,7 @@ void handleaktion(){//HTTP: /aktion?refresh=605
     }
     if (server.argName(i) == "stop") {
        playfile="";
+       setINI("aniaktiv","");
        aktionen +="stop ";
        message +="\"stop\":\""+server.arg(i)+"\",\r\n";
        Serial.println("stop");
@@ -1005,27 +860,18 @@ void handleRoot()
   startTimer();
 }
 
-void handlestatus()
-{// /status.ard
-  stoppTimer(true);
-  // {"PROGversion":"0", "SD":"-", "Aniaktiv":"dateiname.ani"}
-  String html = "";
-  html+="{";
-  html+=" \"PROGversion\": \""+String(progversion)+"\",\r\n";
-  html+=" \"SD\":\"-\",\r\n";// nicht relevant
-  html+=" \"Aniaktiv\":\"\"\r\n";
-  html+="";
-  html+="}";
-  server.setContentLength(html.length());
-  server.send(200,"text/html",html);
-
-  startTimer();
-}
 
 void handleDraw(){
   String html = "{}";
   drawmodus="drawpic";
-  playfile="";    
+ 
+  if(playfile!=""){
+      stoppTimer(true);
+      setINI("aniaktiv","");
+      playfile=""; 
+      startTimer();
+  }
+      
   char clientline[BUFSIZ+1];  //inputzeile max.256 Zeichen !
   char cbuffer[BUFSIZ+1];  //inputzeile max.256 Zeichen !
   int buffpos=0;
@@ -1062,8 +908,6 @@ void handleDraw(){
         else{
           drawBefehl(clientline);
         }
-        
-        
         //matrix.update();
         //startTimer();
        /*
@@ -1079,53 +923,6 @@ void handleDraw(){
   }  
   server.setContentLength(html.length());
   server.send(200,"text/html",html);
-}
-
-
-void handleDateiliste()
-{//Dateiliste komplett
-  stoppTimer(true);
-  
-  String html ="";
-  int filecounter=0;
-  html+="{";
-  html+=" \"Ordner\":\"\",\r\n";
-  html+=" \"List\":[\r\n";
-
- /*{
-      "Ordner":"",
-      "List":[
-          {"d":"2014-01-30 13:59:11","n":"INDEX.HTM","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
-      ]}
-  */
-  String fileName; 
-  File root = SPIFFS.open("/");
-  if(root.isDirectory()){
-        File file = root.openNextFile();//alle Dateien im Hauptverzeichnis
-        while(file){
-                if(!file.isDirectory()){//keine Ordner: Datei
-                    fileName=file.name();
-                    if(filecounter>0)html+=",";                      
-                    html+="{";
-                    html+="\"d\":\"2014-01-30 13:59:11\",";  //d+s optional (kein d+s wenn Ordner oder backlink)
-                    html+="\"n\":\""+fileName+"\",";
-                    html+="\"s\":"+String(file.size());
-                   // html+=" ";
-                    html+="}\r\n";
-                    filecounter++;
-                }
-                file = root.openNextFile();
-        }
-  }
-  
-  html+="";
-  html+="";
-  html+=" ]";
-  html+="}";
-  server.setContentLength(html.length());
-  server.send(200,"text/html",html);
-  
-  startTimer();
 }
 
 
@@ -1150,20 +947,21 @@ void handleSetup(){//setup, upload,...
                     Serial.print(fileName);
                     Serial.print(" ");
                     Serial.println(file.size());
-                    tmp+="<tr>\r\n";
-                    tmp+="\t<td><a target=\"_blank\" href =\"" + fileName + "\"" ;
-                    if(isdownload(fileName)){
-                      tmp+= " download=\"" + fileName+ "\"" ;
-                      tmp+= " class=\"dl\"";
-                      tmp+= " title=\"Download\"";
-                    }else{
-                       tmp+= " title=\"show\"";
+                    if(fileName!="/setup.ini"){//setup.ini "hidden" File
+                        tmp+="<tr>\r\n";
+                        tmp+="\t<td><a target=\"_blank\" href =\"" + fileName + "\"" ;
+                        if(isdownload(fileName)){
+                          tmp+= " download=\"" + fileName+ "\"" ;
+                          tmp+= " class=\"dl\"";
+                          tmp+= " title=\"Download\"";
+                        }else{
+                           tmp+= " title=\"show\"";
+                        }
+                        tmp+= " >" + fileName.substring(1) + "</a>";
+                        tmp+="</td>\n\t<td class=\"size\">" + formatBytes(file.size())+"</td>\n\t<td class=\"action\">";
+                        tmp+="<a href =\"" + fileName + "?delete=" + fileName + "\" class=\"fl_del\"> löschen </a>";
+                        tmp+="</td>\r\n</tr>\r\n";
                     }
-                    tmp+= " >" + fileName.substring(1) + "</a>";
-                    tmp+="</td>\n\t<td class=\"size\">" + formatBytes(file.size())+"</td>\n\t<td class=\"action\">";
-                    tmp+="<a href =\"" + fileName + "?delete=" + fileName + "\" class=\"fl_del\"> löschen </a>";
-                    tmp+="</td>\r\n</tr>\r\n";
-            
                 }
                 file = root.openNextFile();
         }
@@ -1204,6 +1002,8 @@ void handleSetup(){//setup, upload,...
 
 void handleData(){// data.json
  stoppTimer(true);
+ if(drawmodus="drawpic")drawmodus="";
+ 
  Serial.println("GET>data.json");
  
   String message = "{\r\n";
@@ -1296,12 +1096,14 @@ void handleData(){// data.json
           while(file){
                   if(!file.isDirectory()){//nur root
                       fileName=file.name();
-                      if(counter>0)  message +=",\r\n";
-                      message +=" {";
-                      message +="\"fileName\":\""+fileName+"\", ";
-                      message +="\"fileSize\":"+String(file.size());
-                      message +="}";
-                      counter++; 
+                      if(fileName!="/setup.ini"){//setup.ini "hidden" file
+                          if(counter>0)  message +=",\r\n";
+                          message +=" {";
+                          message +="\"fileName\":\""+fileName+"\", ";
+                          message +="\"fileSize\":"+String(file.size());
+                          message +="}";
+                          counter++; 
+                      }
                   }
                   file = root.openNextFile();
           }
@@ -1320,23 +1122,21 @@ void handleData(){// data.json
 
 
 void handleFileUpload() {          // Dateien ins SPIFFS schreiben
-  setplayfiledata("");
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     stoppTimer(true);
+    setplayfiledata("");
     String filename = upload.filename;
-    Serial.print("handleFileUpload Name: "); Serial.println(filename);
+    Serial.print("upload.filename: "); Serial.println(filename);
     if (filename.length() > 30) {
       int x = filename.length() - 30;
       filename = filename.substring(x, 30 + x);
     }
     filename = server.urlDecode(filename);
     filename = "/" + filename;
-    Serial.print("handleFileUpload Name: "); Serial.println(filename);
+    Serial.print("filename: "); Serial.println(filename);
     fsUploadFile = SPIFFS.open(filename, "w");
     if(!fsUploadFile) Serial.println("!! file open failed !!");
-   
-    //filename = String();
     
   } else if (upload.status == UPLOAD_FILE_WRITE) {
     if (fsUploadFile){
@@ -1344,19 +1144,32 @@ void handleFileUpload() {          // Dateien ins SPIFFS schreiben
         fsUploadFile.write(upload.buf, upload.currentSize);
       }
   } else if (upload.status == UPLOAD_FILE_END) {
-    if (fsUploadFile){
-      fsUploadFile.close();
-      Serial.println("close");
-    }
-    yield();
-    Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
-    server.sendContent("HTTP/1.1 303 OK\r\nLocation:/setup.htm\r\nCache-Control: no-cache\r\n\r\n");
-    startTimer();
+        if (fsUploadFile){
+          fsUploadFile.close();
+          Serial.println("close");
+        }
+        yield();
+        Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+        
+        bool gosetup=true;
+        for (uint8_t i = 0; i < server.args(); i++) {
+          if (server.argName(i) == "rel") {
+            if(server.arg(i)=="no")gosetup=false;
+            }
+        }
+
+        //303=Seite umlenken
+        if(gosetup)
+          server.sendContent("HTTP/1.1 303 OK\r\nLocation:/setup.htm\r\nCache-Control: no-cache\r\n\r\n");
+          else
+          server.sendContent("HTTP/1.1 303 OK\r\nLocation:/\r\nCache-Control: no-cache\r\n\r\n");
+       
+        startTimer();
   }
 }
 void handleNotFound() {
  stoppTimer(true);
-
+ if(drawmodus="drawpic")drawmodus="";
   //--check Dateien im SPIFFS--
  if(!handleFileRead(server.uri())){ 
     //--404 als JSON--
@@ -1585,6 +1398,7 @@ bool setplayfiledata(String filname){
         
         drawmodus="playfile";
         playfile=filname;
+        setINI("aniaktiv",filname);
       }
       //else "datei zu groß"
     }
@@ -1593,6 +1407,7 @@ bool setplayfiledata(String filname){
    }
    else{//nicht existent
     playfile="";
+    setINI("aniaktiv","");
     drawmodus="";
     anifilepos=0;
     anifileframecounter=0;
@@ -1675,6 +1490,9 @@ void drawBefehl(char *befehl){
                                     )
                     );
   }
+
+  //TODO: sxxyy$time sxxyy$datum sxxyyEin String
+
  
   if(befehl[0]=='B'){
      matrix.update();

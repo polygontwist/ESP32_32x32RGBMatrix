@@ -14,8 +14,10 @@ TODO:
 //deutsch:
 var thetext={
 	stat0:"Version: ",
-	stat1:"SD-Karte: ",
+	stat1:"Datenspeicher: ",
+	stat1used:"benutzt: ",
 	stat2:"aktive Animation: ",
+	statMac:"MAC: ",
 
 	hm0:"Status",
 	hm1:"Dateien",
@@ -26,6 +28,7 @@ var thetext={
 	edit:"edit",
 	del:"del",
 	upload:"einlesen",
+	frei:"frei",
 	
 	em0:"<<",
 	em1:"Ani",
@@ -105,9 +108,9 @@ function getCo(id){if(isLS())return localStorage.getItem(id);else return ''}
 
 function getXREq(){
 	var re;
-	try {// Mozilla, Opera, Safari sowie Internet Explorer (ab v7)
+	try {// Mozilla, Opera, Safari sowie Internet Explorer 
 			re=new XMLHttpRequest();
-			if(re.overrideMimeType)re.overrideMimeType('text/text');
+			//if(re.overrideMimeType)re.overrideMimeType('text/text');
 			} 
 			catch(e){
 				try {re=new ActiveXObject("Microsoft.XMLHTTP");} 
@@ -218,6 +221,59 @@ function srh(z,a,b){
 	z.setRequestHeader(a,b);
 }
 
+function uploadgeneratedfile(dateiname,dateidaten,retfunc,statechangefunc){
+	var postData =function(url, auswertfunc,POSTdata,rh){
+		var loader,i;
+		try {loader=new XMLHttpRequest();}
+		catch(e){
+				try{loader=new ActiveXObject("Microsoft.XMLHTTP");}
+				catch(e){
+					try{loader=new ActiveXObject("Msxml2.XMLHTTP");}
+					catch(e){loader=null;}
+				}
+			}	
+		if(!loader)alert('XMLHttp nicht möglich.');
+		loader.onreadystatechange=function(){			
+			if(loader.readyState==4)auswertfunc(loader);
+				else
+				if(typeof statechangefunc==="function" )statechangefunc(loader);
+			};
+		loader.ontimeout=function(e){console.log("TIMEOUT");}
+		loader.onerror=function(e){console.log("ERR",e,loader.readyState);}
+		
+		if(POSTdata!=undefined){
+				loader.open("POST",url,true);
+				if(rh!=undefined){
+						for(i=0;i<rh.length;i++){
+							loader.setRequestHeader(rh[i].typ,rh[i].val);
+						}
+				}
+				loader.send(POSTdata);
+			}else{
+				alert("Keine Daten zum senden vorhanden.");
+			}
+	}
+
+	
+	var id= (new Date()).getTime();
+	var header=[];
+	header.push({typ:"Content-Type",val:"multipart/form-data; boundary=---------------------------"+id});
+	
+	var senddata="-----------------------------"+id+"\r\n";//CR LF
+	senddata+="Content-Disposition: form-data; name=\"upload\"; filename=\""+dateiname+"\"\r\n";
+	senddata+="Content-Type: multipart/form-data; boundary=---------------------------"+id+"\r\n";
+	senddata+="Content-Type: text/plain\r\n";
+	senddata+=dateidaten;
+	senddata+="-----------------------------"+id+"--\r\n";
+	postData("./upload?rel=no", 
+				function(data){if(retfunc)retfunc(data); else console.log("uploadstatus",data);},
+				senddata,
+				header
+	);
+	
+}
+
+
 function c_Editor(ziel,wos){
 	var o=this,
 	url="ani.ANI",
@@ -251,58 +307,30 @@ function c_Editor(ziel,wos){
 			while(v.length<4)v="0"+v;
 			da+="d"+v+"\r\n";//#0d cr #0a lf
 		}
-		da+=" \r\n";
 		console.log(da);
 		showSta(tra("statsave")+".");
 		
-//TODO: überarbeiten, funktioniert nicht mehr so!	
-		var mLo=getXREq();		
-		if(!mLo)
-				console.log('XMLHttp nicht möglich.');		
-				else
-				{
-				mLo.basis=this;
-				mLo.z=0;
-				mLo.parseFunc=parseSaveAni;
-				mLo.onreadystatechange=function(){
-					this.z++;
-					if(this.z==0)
-						showSta(tra("statsave")+".*");
-					if(this.z==10)	
-						showSta(tra("statsave")+"*.");
-					if(this.z>19)
-						this.z==0;
-					
-					if(this.readyState==4){
-					   if (this.status==200)
-							this.parseFunc(this.responseText);
-							else 
-							console.log("Fehler "+this.status);
-					}
-				};
-				mLo.open("POST","upload?dir=",false);
-				srh(mLo,"X-Date",getDatum());//X-Date: jjjjmmtthhmmss
-				srh(mLo,"Content-length",da.length);			//TODO: abgeleht!!!!
-				srh(mLo,"Connection","close");					//TODO: abgeleht!!!!
-				srh(mLo,"Content-Type","multipart/form-data; boundary=---------------------------6675123456789");
-				srh(mLo,"Connection","keep-alive");
-				srh(mLo,"Pragma","no-cache");
-				srh(mLo,"Cache-Control","no-cache");
-				vda="\n";
-				vda+="---------------------------6675123456789\r\n";
-				vda+='Content-Disposition: form-data; name="file"; filename="'+url+'"'+"\r\n";
-				vda+="Content-Type: text/plain"+"\r\n"+"\r\n";
-				vda+=da;
-				vda+="---------------------------6675123456789--\r\n";
-				showSta(tra("statsave")+"..");
-				mLo.send(vda);
-				}
+		var statz=0;
+		uploadgeneratedfile(url,da,uploadauswertung, 
+				function(loader){ 
+						statz++;
+						if(statz>9)statz=0;
+						var s="";
+						for(var i=0;i<statz;i++)s+=".";
+						showSta(tra("statsave")+s); 
+						}
+			);
 	}
-	var parseSaveAni=function(rt){
-		alert(tra("dok"));
-		hatdaten=false;
-		showSta("");
-		console.log(rt);
+	var uploadauswertung=function(data){
+		if(data.status==200){
+			showSta("");
+			alert(tra("dok"));
+			hatdaten=false;
+		}
+		else{
+			showSta("uploadfehler "+data.status);
+			console.log(data);
+		} 
 	}
 	
 	var get_Color444=function(r,g,b){//#rgb  0..F return String
@@ -610,7 +638,7 @@ function c_Editor(ziel,wos){
 			}
 		}
 		
-		console.log(re,art);
+		//console.log(re,art);
 		
 		return re;
 	}	
@@ -978,7 +1006,10 @@ function c_Editor(ziel,wos){
 		i.maxlength="4";
 		i.onkeyup=function(){
 				if(!isNaN(this.value))
-					if(this.value!="")waittime=this.value;
+					if(this.value!=""){
+						waittime=this.value;
+						hatdaten=true;
+					}
 				}
 		i=cE('span',li2);
 		i.innerHTML="MilliSec";
@@ -1002,7 +1033,7 @@ function c_Editor(ziel,wos){
 		createAddButt(li);		
 		
 		timelineDiv.scrollLeft=timelineDiv.offsetWidth;
-		hatdaten=true;
+		
 	}
 	
 	var playpause=function(stoppen){
@@ -1035,7 +1066,7 @@ function c_Editor(ziel,wos){
 		if(cDIV!=undefined)cDIV.style.backgroundColor=c;
 	}
 	
-	var b_addFrame=function(e){addFrame();e.preventDefault();}
+	var b_addFrame=function(e){addFrame();hatdaten=true;e.preventDefault();}
 		
 	var b_playpauseFrame=function(e){
 		if(isAniplay)
@@ -1406,14 +1437,32 @@ function c_loadPicDialog(ziel,readpicfunc){
 	create();
 }
 
+function formatbytes(bytes){
+	if (bytes < 1024){
+		return (bytes) + "B";
+	}
+	else 
+	if (bytes < (1024 * 1024)) {
+		return Math.floor(bytes / 1024.0 *10)/10 + "KB";
+	} 
+	else 
+	if (bytes < (1024 * 1024 * 1024)) {
+		return Math.floor(bytes / 1024.0 / 1024.0*10)/10 + "MB";
+	} 
+	else 
+	{
+		return Math.floor(bytes / 1024.0 / 1024.0 / 1024.0*10)/10 + "GB";
+	}
+}
+
 var wOS=function(zielid){
     var o=this,t,
 		divDialog,cMenue,
 		ladedatenURL="",
 		ListModus=0, //0=nur .ani 1=alles
 		Menue=[
-			{txt:tra("hm0"),url:"status.ard",typ:"status"},
-			{txt:tra("hm1"),url:"list.ard"	,typ:"dir"	},
+			{txt:tra("hm0"),url:"data.json", typ:"status"},
+			{txt:tra("hm1"),url:"data.json"	,typ:"dir"	},
 			{txt:tra("hm2"),url:""			,typ:"editor"}		
 			],
 		MenueEditor=[
@@ -1457,39 +1506,6 @@ var wOS=function(zielid){
 		ladeDaten(url,parseContent ,data);
 	}
 
-	o.postDaten=function(){
-		var mLo=getXREq();
-		if(!mLo)
-			error('XMLHttp nicht möglich.');		
-			else
-			{
-			gE('buttsenden').style.display="none";				
-			var e=cE("span",gE('upload-form'),this);
-			e.className="isupload";
-			e.innerHTML=tra("uploding");
-			e=gE('file-upload');
-			e.style.display="none";
-			file = e.files[0];
-			var data = new FormData();//oFormular
-			data.append('file', file);
-			mLo.basis=this;
-			mLo.onreadystatechange=function(){
-				if(this.readyState==4){
-				   if (this.status==200)
-						listDIR(JSON.parse(this.responseText));
-						else 
-						error("Fehler "+this.status);
-				}
-			};
-			mLo.open("POST","upload.htm?dir="+aktiverOrdner,false);
-			srh(mLo,"X-Date",getDatum());//X-Date: jjjjmmtthhmmss
-			srh(mLo,"Content-length",file.size);
-			srh(mLo,"Connection","close");
-			mLo.send(data);
-			}
-		return false;
-	}
-
 	var ladeDaten=function(url,parsefunc,data){
 		var mLo=getXREq();
 		if(!mLo)
@@ -1523,66 +1539,74 @@ var wOS=function(zielid){
 	}
 	
 	var showStatus=function(stat){
-	  var z=ziel;
+	  var p,a,z=ziel;
 	  z.innerHTML="";
 	  ArduinoStatus=stat;	  
-	  cE("p",z,this).innerHTML=tra("stat0")+stat.PROGversion;	  
-	  cE("p",z,this).innerHTML=tra("stat1")+stat.SD;
-	  cE("p",z,this).innerHTML=tra("stat2")+stat.Aniaktiv;
+	  cE("p",z).innerHTML=tra("stat0")+stat.progversion;	  
+	  cE("p",z).innerHTML=tra("statMac")+stat.macadresse;
+	  p=cE("p",z);
+	  p.innerHTML=tra("stat2")+stat.aniaktiv;
+	  if(stat.aniaktiv!=""){
+		  a=cE("a",p);
+		  a.innerHTML=tra("stop");
+		  a.href="#";
+		  a.className="button aniaktiv";
+		  a.addEventListener('click',function(e){
+										ladeDaten("/aktion?stop=0", 
+													function(d){
+														ladeDaten("data.json",parseContent,{"typ":"status"});
+													}  
+												);
+												})
+		}
+	  
+	  cE("p",z).innerHTML=tra("stat1")+formatbytes(stat.fstotalBytes)+' '+tra("stat1used")+stat.fsused;
+	  cE("p",z).innerHTML="<a href=\"setup.htm\" target=\"blank\">setup</a>";
 	}	
 	
-	var listsort=function(a,b){//Odner immer oben
-		if(a.n ==undefined || b.n==undefined)return 0;		
-		if (a.n.indexOf('.')==-1)return -1;
-		else if (b.n.indexOf('.')==-1)return 1;else return 0;
-	}
+	
 	
 	var listDIR=function(dat){
 	  ziel.innerHTML="";
-	  var ul=cE("ul",ziel,this);
+	  var ul=cE("ul",ziel);
 	  ul.className="dateiliste";
-	  var a,s,li,ordner=dat.Ordner,listeOff=[],listeDelButt=[];
-	  ArduinoStatus.Aniaktiv=dat.Aniaktiv;
-	  if(dat.Ordner!=undefined)aktiverOrdner=dat.Ordner;//
-	  if(ordner!="")ordner+="/";
-	  dat.List.sort(listsort);
-
-	console.log(ordner,dat);			
-	  for(var t=0;t<dat.List.length;t++){
-		s=dat.List[t];				//  {"d":"2014-01-30 13:59:11","n":"/test.ANI","s":12345} d+s optional (kein d+s wenn Ordner oder backlink)
-		if(s.n==undefined)break;
+	  var a,s,li,listeOff=[],listeDelButt=[];
+	  ArduinoStatus.Aniaktiv=dat.aniaktiv;
+	
+console.log(dat);	
+	
+	  for(var t=0;t<dat.files.length;t++){
+		s=dat.files[t];
+		if(s.fileName==undefined)break;
 		li=cE("li",ul,this);		
-		a=cE("span",li,this);
-		if(s.d!=undefined)a.innerHTML=s.d;
+		a=cE("span",li,this);		
+		if(s.fileSize!=undefined)a.innerHTML=s.fileSize+'byte';
 		
-		if(s.s!=undefined)a.innerHTML=a.innerHTML+' '+s.s+'byte';
-		
-		if(s.n.indexOf('.ANI')==-1){
+		if(s.fileName.indexOf('.ANI')==-1){
 			li.style.display="none";
 			listeOff.push(li);
 			}
-	//console.log(s.n,ordner,dat);			
 		
 		var aa=cE("a",li,this);
 		aa.basis=this;
-		aa.innerHTML=s.n.split('/').join('');
-		if(s.n!="..")s.n=ordner+s.n;
-		aa.href=s.n;
+		aa.innerHTML=s.fileName.split('/').join('');
+		if(s.fileName!="..")s.fileName=s.fileName;
+		aa.href=s.fileName;
 		aa.target="_blank";
 		aa.o={typ:"dir"};
 		
 		aa.obj=s;
-		if(s.n.indexOf(".")==-1 || s.n.indexOf("..")>-1){
+		if(s.fileName.indexOf(".")==-1 || s.fileName.indexOf("..")>-1){
 			aa.href="#";
-			aa.theurl="list.ard"+"?dir="+s.n;
+			aa.theurl="list.ard"+"?dir="+s.fileName;
 			aa.onclick=function(){ 
 					ladeContent(this.theurl,{typ:"datei"});		
 					return false;
 					}
 		}
 		
-		if(((s.n.indexOf(".TXT")>-1 || s.n.indexOf(".ANI")>-1)||(s.n.indexOf(".")>0)) 
-			&& s.n!="UP.HTM" && s.n.indexOf("..")==-1){
+		if(((s.fileName.indexOf(".TXT")>-1 || s.fileName.indexOf(".ANI")>-1)||(s.fileName.indexOf(".")>0)) 
+			&& s.fileName!="UP.HTM" && s.fileName.indexOf("..")==-1){
 			var a=cE("a",li,this);
 			a.innerHTML=tra("del");
 			a.basis=this;
@@ -1594,8 +1618,8 @@ var wOS=function(zielid){
 			listeDelButt.push(a);
 		}
 		
-		if(s.n.indexOf(".ANI")>-1){
-			if(ArduinoStatus.Aniaktiv==s.n){ 
+		if(s.fileName.indexOf(".ANI")>-1){
+			if(ArduinoStatus.Aniaktiv==s.fileName){ 
 				aa.className="aniaktiv";			
 				a=cE("a",li,this);
 				a.innerHTML=tra("stop");
@@ -1624,6 +1648,9 @@ var wOS=function(zielid){
 			a.obj=s;
 		}
 	  }	
+	 
+	  cE("p",ziel).innerHTML=tra("stat1")+formatbytes(dat.fstotalBytes)+' '+tra("stat1used")+dat.fsused+' '+tra("frei")+': '+formatbytes(dat.fstotalBytes-dat.fsusedBytes);
+	  
 		  
 	  var ap=cE("a",ziel,this);
 	  ap.innerHTML="+";
@@ -1638,7 +1665,7 @@ var wOS=function(zielid){
 	  //uploadform post per Script
 	  window.thebasis=this;
 	  ul=cE("form",ziel,"upload-form");
-      ul.action="upload.htm";
+      ul.action="/upload?rel=no";
 	  ul.method="POST";
 	  ul.enctype="multipart/form-data";
 	  ul.ofo=ul;
@@ -1654,10 +1681,8 @@ var wOS=function(zielid){
 	  ifile.className="selFile";
 
 	  a=cE("input",ul,"buttsenden");
-	  a.type="button";
+	  a.type="submit";
 	  a.value=tra("upload");
-	  a.basis=this;
-	  a.onclick=function(){this.basis.postDaten();}	 
 
 	  if(ListModus==1)ap.onclick();
 	}
@@ -1680,12 +1705,11 @@ var wOS=function(zielid){
 	}
 
 	var parseDelFile=function(data){
-		console.log(data);
-		//reload seite
+		ladeDaten("data.json",parseContent,{"typ":"dir"});
 	};
 	
 	var ANIstop=function(e){
-		ladeDaten("/aktion?stop="+this.obj.n);
+		ladeDaten("/aktion?stop="+this.obj.fileName);
 		e.preventDefault();
 	}	
 	var aktivanibutt=undefined;
@@ -1698,7 +1722,7 @@ var wOS=function(zielid){
 	var ANIplay=function(e){
 		if(this.stat==""){
 			resetPlayButt();
-			ladeDaten("/aktion?play="+this.obj.n);
+			ladeDaten("/aktion?play="+this.obj.fileName);
 			aktivanibutt=this;
 			this.stat="p";
 			this.innerHTML=tra("stop");
@@ -1712,14 +1736,14 @@ var wOS=function(zielid){
 	}
 	var deleteFile=function(e){
 		if(confirm(tra("dlg1")))
-			ladeDaten(this.obj.n+"?delete="+this.obj.n,parseDelFile,this);
+			ladeDaten(this.obj.fileName+"?delete="+this.obj.fileName,parseDelFile);
 		e.preventDefault();
 	}	
 	
 	var editFile=function(e){
-		this.obj.n=this.obj.n.split('/').join('');
-		console.log(this.obj.n);
-		showEditor(this.obj.n);
+		this.obj.fileName=this.obj.fileName.split('/').join('');
+		console.log(this.obj.fileName);
+		showEditor(this.obj.fileName);
 	}
 	
 	var error=function(s){ziel.innerHTML="<p class=\"error\">"+s+"</p>";}
