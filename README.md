@@ -62,3 +62,4 @@ Infos ausgeben:
 # TODO
 * check freien Speicher bei upload
 * Dateiformat erweitern für Text und dynamischen Text (z.B. Uhrzeit); für einen individuellen Defaultscreen
+* handling wenn WLAN-Verindung abreißt
