@@ -2,6 +2,10 @@
 
 Der ESP32 soll einen Arduino Mega ersetzen der bis dato ein 32x32 RGB-Pannel angesteuert hat.
 
+![](https://raw.githubusercontent.com/polygontwist/ESP32_32x32RGBMatrix/master/bilder/32x32rgb-matrix_beispiel1.jpg)
+
+Der Editor ist per Tablett, PC oder per Smartphone bedienbar.
+
 # momentane Probleme & Lösungen
 Crash beim SPIFFS lesen/schreiben & aktiven Timer/xTask: beim abspielen einer Datei wird diese jetzt zwischengepuffert.
 Bei Dateioperationen wird der Timer/xTask abgeschaltet, danach wieder gestartet (RGB-Matrix wird kurz schwarz).
