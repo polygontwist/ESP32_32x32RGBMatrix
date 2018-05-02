@@ -2,6 +2,10 @@
 Author:	Vitali Gottselig
 https://github.com/
 */
+
+#ifndef __ESP32RGBmatrixPanel__
+#define __ESP32RGBmatrixPanel__
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "Adafruit_GFX.h"
@@ -106,7 +110,7 @@ public:
 
 	/* reset all Pixels to black */
 	void black();
-	/*  call every 1-3µs! */
+	/*  call every 1-3ï¿½s! */
 	void IRAM_ATTR update();
 	/*  from 0 = off to 10 = max */
 	void setBrightness(byte brightness);
@@ -149,3 +153,4 @@ private:
 	uint8 yS;
 };
 
+#endif

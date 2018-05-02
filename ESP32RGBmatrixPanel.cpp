@@ -1,5 +1,4 @@
 #include "ESP32RGBmatrixPanel.h"
-//#include "./../../hardware/espressif/esp32/cores/esp32/esp32-hal-gpio.h"
 #include <esp32-hal-gpio.h>
 //G1	R1 |
 //GND	B1 |
@@ -59,7 +58,7 @@ void IRAM_ATTR ESP32RGBmatrixPanel::initGPIO()
 }
 
 
-void ESP32RGBmatrixPanel::drawPixel(int16_t x, int16_t y, uint16_t c)
+void IRAM_ATTR ESP32RGBmatrixPanel::drawPixel(int16_t x, int16_t y, uint16_t c)
 {
 	if (x < 0 || x >= COLUMNS) return;
 	if (y < 0 || y >= ROWS) return;
@@ -93,7 +92,7 @@ void ESP32RGBmatrixPanel::black()
 #define loops 10
 void IRAM_ATTR ESP32RGBmatrixPanel::update()
 {
-	if (loopNr == 0) drawRow();			//Display OFF-time (25 µs). 
+	if (loopNr == 0) drawRow();			//Display OFF-time (25 ï¿½s). 
 	if (loopNr == loopNrOn) on();				//Turn Display ON
 	loopNr = loopNr + 1;
 	if (loopNr >= loops)
