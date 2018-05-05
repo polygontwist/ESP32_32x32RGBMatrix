@@ -216,6 +216,7 @@ void IRAM_ATTR drawTask( void * pvParameters ){
                 //matrix.setTextSize(1);
                 matrix.black();//alles löschen
 
+            
                 //blinkender richtungsloser Fleck
 /*
                 lavercounter+=(stepp*steppDir);
@@ -1501,4 +1502,5 @@ void drawBefehl(char *befehl){
   //if(befehl[0]=="d"){}//wurde schon ausgewertet
   
 }
+
 

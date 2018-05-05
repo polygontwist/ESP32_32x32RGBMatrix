@@ -106,6 +106,46 @@ function isLS(){try{return 'localStorage' in window && window['localStorage']!==
 function setCo(id,s){if(isLS())localStorage.setItem(id,s);}
 function getCo(id){if(isLS())return localStorage.getItem(id);else return ''}
 
+
+
+var addClass=function(node,C){	
+	var newC;
+	if(node!=undefined){
+		newC=node.className;
+		if(newC==undefined || newC=="")newC=C;
+		else
+		if(!istClass(node,C))newC+=' '+C;	
+		node.className=newC;
+	}			
+}
+ 
+var subClass=function(node,C){
+	var CL,i;
+	if(node!=undefined && node.className!=undefined){
+		CL=node.className.split(" ");	
+		var newC="";
+		for(i=0;i<CL.length;i++){
+			if(CL[i]!=C){
+				if(newC!="")newC+=" ";
+				newC+=CL[i];
+				}
+		}
+		node.className=newC;
+	}
+}
+ 
+var istClass=function(node,C){
+	if(node.className){
+		var i,CL=node.className.split(' ');
+		for(i=0;i<CL.length;i++){
+				if(CL[i]==C)return true;
+		}	
+	}		
+	return false;
+}
+
+
+
 function getXREq(){
 	var re;
 	try {// Mozilla, Opera, Safari sowie Internet Explorer 
@@ -1626,8 +1666,11 @@ console.log(dat);
 				a.basis=this;
 				a.href="#";	
 				a.className="button";
-				a.onclick=ANIstop;
+				a.onclick=ANIplay;
+				a.stat="isplaing";
 				a.obj=s;
+				a.filea=aa;
+				aktivanibutt=a;
 			}
 			else{
 				a=cE("a",li,this);
@@ -1637,6 +1680,7 @@ console.log(dat);
 				a.className="button play";
 				a.onclick=ANIplay;
 				a.stat="";
+				a.filea=aa;
 				a.obj=s;
 			}
 			a=cE("a",li,this);
@@ -1708,15 +1752,13 @@ console.log(dat);
 		ladeDaten("data.json",parseContent,{"typ":"dir"});
 	};
 	
-	var ANIstop=function(e){
-		ladeDaten("/aktion?stop="+this.obj.fileName);
-		e.preventDefault();
-	}	
 	var aktivanibutt=undefined;
 	var resetPlayButt=function(){
 		if(aktivanibutt!=undefined){
 			aktivanibutt.innerHTML=tra("play");
 			aktivanibutt.stat="";
+			addClass(aktivanibutt,"play");
+			subClass(aktivanibutt.filea,"aniaktiv");
 		}
 	}
 	var ANIplay=function(e){
@@ -1726,10 +1768,11 @@ console.log(dat);
 			aktivanibutt=this;
 			this.stat="p";
 			this.innerHTML=tra("stop");
+			subClass(this,"play");//aniaktiv
+			addClass(this.filea,"aniaktiv");
 		}
 		else{
 			resetPlayButt();
-			this.innerHTML=tra("play");
 			ladeDaten("/aktion?stop=0");
 		}
 		e.preventDefault();
