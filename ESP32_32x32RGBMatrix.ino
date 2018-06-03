@@ -33,6 +33,9 @@
   http://hit-karlsruhe.de/hit-info/info-ws17/Drehteller_Revisited/0403Softwaredoku.html
   https://www.studocu.com/en-gb/document/deakin-university/modern-data-science/lecture-notes/kolban-esp32-esp32-documents-for-iot/1423897/view
 
+
+  Filter: setup.ini wird nicht ausgeliefert
+
 */
 
 
@@ -86,7 +89,7 @@ String drawmodus="";
 //uint8 G2 = 2;
 //uint8 BL2 = 15;
 
-const char* progversion  = "32x32 RGB-Matrix V0.55";//ota fs ntp ti ini rgb
+const char* progversion  = "32x32 RGB-Matrix V0.56";//ota fs ntp ti ini rgb
 
 String ssid = "42";  //set per serial: setssid=
 String password = "";//set per serial: setpass=
@@ -412,7 +415,9 @@ void setup() {
   server.on("/",handleRoot); 
   server.on("/index.htm",handleRoot); 
   server.on("/index.html",handleRoot);
-   
+  
+  server.on("/setup.ini",handleunauthorizedfiles);//niemals ausliefern, nur für Debugzwecke auskommentieren
+  
   server.on("/data.json", handleData);
   server.on("/setup.htm",handleSetup);
 
@@ -861,6 +866,15 @@ void handleRoot()
   startTimer();
 }
 
+void handleunauthorizedfiles(){
+  stoppTimer(true);
+  
+  String html = "Dateizugriff nicht erlaubt (Code 403: Forbidden).\r\n";
+  server.setContentLength(html.length());
+  server.send(403,"text/html",html);
+  
+  startTimer();
+}
 
 void handleDraw(){
   String html = "{}";
