@@ -29,7 +29,7 @@ Bei Dateioperationen wird der Timer/xTask abgeschaltet, danach wieder gestartet 
 * NTP: https://github.com/gmag11/NtpClient/blob/master/src/NTPClientLib.cpp
 * Calc time to stunde/min/sec/Monat/tag/Jahr https://github.com/arduino-libraries/NTPClient/issues/36
 * Filesystem: https://github.com/esp8266/Arduino/blob/master/doc/filesystem.rst
-* OTA 
+* EasyOTA https://github.com/jeroenvermeulen/JeVe_EasyOTA/
 
 # Demo/History
 * Version 0.50: https://www.instagram.com/p/Bhw8z1TAUns 
