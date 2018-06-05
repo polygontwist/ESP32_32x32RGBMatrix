@@ -36,6 +36,7 @@ Bei Dateioperationen wird der Timer/xTask abgeschaltet, danach wieder gestartet 
 * Version 0.52: https://www.instagram.com/p/Bh4uAPDgLLZ Bildansehen: tranfer speed up
 * Version 0.54: https://www.instagram.com/p/BiIK3oYAFUu Datei abspielen über einem Hilfspuffer
 * Version 0.55: cleaning code,fix save-Editorfile, System jetzt mit allen Funktionen einsetzbar.
+* 32x32.js/32x32.css 05.06.2018: integrated color picker, jetzt kann die Farbe auch im Bild ausgewählt werden
 
 # Installation
 Nach dem Flaschen der ESP32_32x32RGBMatrix.ino (mit Arduino), wird mit der seriellen Konsole (z.B. in Arduino-IDE) die SSID und das Passwort des WLANS eingestellt werden:
