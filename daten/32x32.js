@@ -1,13 +1,12 @@
 "use strict";
 /*
-	Version 24-04-2018
-TODO:
--save File (request von sonoffs20-Timer!)
+	Version 15-43-2014: erste Version (für Arduino)
+	Version 24-04-2018: rewrite code (für ESP32)
+	Version 05-06-2018: add colorpicker
 
-	Version 15-43-2014
-TODO: 
--colorpicker
--game
+	TODO: 
+	-time
+	-game
 
 */
 
@@ -33,6 +32,7 @@ var thetext={
 	em0:"<<",
 	em1:"Ani",
 	em2:"Tools",
+	getcolor:"Farbe picken",
 	
 	em1Sm1:"neu",
 	em1Sm2:"speichern",
@@ -207,9 +207,9 @@ function c_menue(ziel){
 	}
 	var clickMP=function(e){
 		var o=this;
-		if(typeof o.bm.ma==="object")o.bm.ma.className="";		
+		if(typeof o.bm.ma==="object")subClass(o.bm.ma,"aktiv");		
 		o.bm.ma=o;
-		o.bm.ma.className="aktiv";	
+		addClass(o.bm.ma,"aktiv");	
 		if(o.oc)o.oc(e);
 		if(e)e.preventDefault();
 	}
@@ -249,7 +249,14 @@ function c_menue(ziel){
 					a.menue=ul;
 					a.basis=this;
 					a.oc=onclick;
-					if(oList[t].aktiv!=undefined){if(oList[t].aktiv)a.className="aktiv";}else a.className="normal";
+					if(oList[t].aktiv!=undefined){
+						if(oList[t].aktiv)
+							subClass(a,"normal");
+							addClass(a,"aktiv");}
+						else{
+							subClass(a,"aktiv");
+							addClass(a,"normal");
+							}
 				}
 			ul.style.display="block";
 			this.DDmenueaktiv=id;
@@ -326,13 +333,25 @@ function c_Editor(ziel,wos){
 	waittime=100,
 	frameaktiv=undefined,
 	isAniplay=false,
-	framecount=0
+	framecount=0,
+	werkzeug=0 //0=pen,1=picker
 	;
 	
 	o.setcDIV=function(div){cDIV=div};
 	o.hatdaten=function(){return hatdaten;};
 	o.getaktivColor=function(){return aktivColor;}
 	o.geturl=function(){return url;}
+	
+	o.setModus=function(id){
+		werkzeug=id;
+		if(werkzeug==1)showSta(tra("getcolor"));
+		}
+	o.getModus=function(){return werkzeug;}
+
+	o.setColor=function(c){
+		aktivColor=c;
+		if(cDIV!=undefined)cDIV.style.backgroundColor=c;
+	}
 	
 	o.arrTos=function(a){var s="";for(var t=0;t<a.length;t++)s+=a[t]+'\r\n';return s}
 	o.saveAni=function(){
@@ -826,7 +845,16 @@ function c_Editor(ziel,wos){
 		 x=Math.round(grid.w/o.offsetWidth*p.x);
 		 y=Math.round(grid.h/o.offsetHeight*p.y);
 		 p=gE("pixel_"+x+"_"+y);
-		 p.style.backgroundColor=aktivColor;			
+		 if(werkzeug==0){//draw
+			p.style.backgroundColor=aktivColor;
+			hatdaten=true;
+		 }	
+		 else if(werkzeug==1){//picker			
+			var col=p.style.backgroundColor;
+			if(col.length>0){o.setColor(col);}
+			else{o.setColor("rgb(0, 0, 0)");}
+			o.setModus(0);
+		 }
 		}
 		e.preventDefault();
 	}
@@ -1101,11 +1129,6 @@ function c_Editor(ziel,wos){
 		window.playtimer=window.setTimeout(function(){playnextFrame();},mlist[c].value);
 	}
 	
-	o.setColor=function(c){
-		aktivColor=c;
-		if(cDIV!=undefined)cDIV.style.backgroundColor=c;
-	}
-	
 	var b_addFrame=function(e){addFrame();hatdaten=true;e.preventDefault();}
 		
 	var b_playpauseFrame=function(e){
@@ -1165,8 +1188,16 @@ function c_Editor(ziel,wos){
 	}
 	
 	var p_click=function(e){
-		this.style.backgroundColor=aktivColor;
-		hatdaten=true;
+		if(werkzeug==0){//draw
+			this.style.backgroundColor=aktivColor;
+			hatdaten=true;
+		}
+		else if(werkzeug==1){//picker			
+			var col=this.style.backgroundColor;
+			if(col.length>0){o.setColor(col);}
+			else{o.setColor("rgb(0, 0, 0)");}
+			o.setModus(0);
+		}
 		//e.preventDefault();
 	};
 	var p_down=function(e){mouseisdown=true;};
@@ -1177,7 +1208,10 @@ function c_Editor(ziel,wos){
 			hatdaten=true;
 		}
 		var s=this.id.split('_');
-		showSta(s[1]+','+s[2]+' '+this.style.backgroundColor);
+		if(werkzeug==0)
+			showSta(s[1]+','+s[2]+' '+this.style.backgroundColor);
+		else
+			showSta(tra("getcolor")+' '+this.style.backgroundColor);
 	};
 	
 	var f_clearPic=function(c){
@@ -1510,6 +1544,7 @@ var wOS=function(zielid){
 			{txt:tra("Ani"),typ:"datei"},
 			{txt:tra("Tools"),typ:"tools"},
 			{txt:"",typ:"farbe"},
+			{txt:"",typ:"colorpicker"},
 			{txt:"",typ:"astatus"}
 			],
 		MEsub0=[
@@ -1855,6 +1890,7 @@ console.log(dat);
 		var ul,p,t,v;
 		p=getPos({x:0,y:0},this);
 		t=this.o.a.o.typ;
+		this.o.Editor.setModus(0);
 		switch(t){
 			case "back":
 				if(cEditor.hatdaten())
@@ -1872,6 +1908,10 @@ console.log(dat);
 			    //Farbwahl 
 				this.bm.showDDmenue([],null,0,"");
 				new c_colorDialog(divDialog,this.o.Editor,this.o.Editor.getaktivColor());
+				break;
+			case "colorpicker":
+				//modus: 1= getColor
+				this.o.Editor.setModus(1);
 				break;
 			case "tools":
 				//Zeitleiste, Werkzeuge				
@@ -1903,6 +1943,10 @@ console.log(dat);
 			cf=cE("div",mp);
 			cf.className="farbkastel";
 			cEditor.setcDIV(cf);
+		}
+		mp=cMenue.getMP("colorpicker");
+		if(mp!=undefined){
+			mp.className="colorpicker";
 		}
 		cEditor.create(MEsub1);
 		if(url!=""){
