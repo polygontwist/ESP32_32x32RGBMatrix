@@ -52,6 +52,25 @@ Dann müssen noch folgende Dateien für das Editorsystem mit der upload-Funktion
 
 Die Dateien befinden sich im Ordner "daten". Dort befinden sich auch Beispiele für die Animationen die hochgeladen werden können. Zu beachten ist das der internen Speicher nur Platz für ca 1,3MB hat - das reicht aber für einige Animationen.
 
+# Hardware
+
+| 32x32 Matrix | Arduino MEGA (1. Projekt) | ESP32 (dieses Projekt) |
+------|------|------|
+| R1 | D24 | 17 |
+| G1 | D25 | 16 |
+| B1 | D26 | 4 |
+| R2 | D27 | 0 |
+| G2 | D28 | 2 |
+| B2 | D29 | 15 |
+| CH A weiß| A0 | 21 |
+| CH B | A1 | 19 |
+| CH C | A2 | 18 |
+| CH D | A3 | 5 |
+| CLK | D11 | 22 |
+| STB/Lat | D10 | 03 |
+| OE | D9 | 23 |
+
+
 # weitere Funktionen der seriellen Konsole
 ESP neu starten:
 * ESP=reboot
