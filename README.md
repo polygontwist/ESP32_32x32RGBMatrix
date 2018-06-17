@@ -54,18 +54,18 @@ Die Dateien befinden sich im Ordner "daten". Dort befinden sich auch Beispiele f
 
 # Hardware
 
-| 32x32 Matrix | Arduino MEGA (1. Projekt) | ESP32 (dieses Projekt) |
+| 32x32 Matrix | Arduino MEGA (1. Projekt) | ESP32 IO (dieses Projekt) |
 ------|------|------|
 | R1 | D24 | 17 |
 | G1 | D25 | 16 |
-| B1 | D26 | 4 |
-| R2 | D27 | 0 |
-| G2 | D28 | 2 |
+| B1 | D26 | 04 |
+| R2 | D27 | 00 |
+| G2 | D28 | 02 |
 | B2 | D29 | 15 |
-| CH A weiß| A0 | 21 |
+| CH A | A0 | 21 |
 | CH B | A1 | 19 |
 | CH C | A2 | 18 |
-| CH D | A3 | 5 |
+| CH D | A3 | 05 |
 | CLK | D11 | 22 |
 | STB/Lat | D10 | 03 |
 | OE | D9 | 23 |
