@@ -3,6 +3,8 @@
 	Version 15-43-2014: erste Version (für Arduino)
 	Version 24-04-2018: rewrite code (für ESP32)
 	Version 05-06-2018: add colorpicker
+	Version 16-08-2020: touchevents repariert (android),
+						Bildupload wird mittig ausgeschnitten
 
 	TODO: 
 	-time
@@ -92,11 +94,11 @@ function getMouseP(e){
 return{x:document.all ? window.event.clientX : e.pageX,y:document.all ? window.event.clientY : e.pageY};
 }
 function getPos(re,o){
-while(o!=undefined){
-if(o.offsetLeft!=undefined){re.x-=o.offsetLeft;re.y-=o.offsetTop;}
-o=o.parentNode;
-}
-return re;
+	while(o!=undefined){
+		if(o.offsetLeft!=undefined){re.x-=o.offsetLeft;re.y-=o.offsetTop;}
+		o=o.parentNode;
+	}
+	return re;
 }
 function relMouse(e,o){return getPos(getMouseP(e),o);}
 
@@ -788,6 +790,7 @@ function c_Editor(ziel,wos){
 			ddd.addEventListener("touchmove", 	atH, !1);
 			ddd.addEventListener("touchend",	atH, !1);
 			ddd.addEventListener("touchcancel",	atH, !1);
+
 		}
 			
 		var toolleiste=	cE('div',z,"toolleisten");
@@ -837,23 +840,40 @@ function c_Editor(ziel,wos){
 		this.resize();
 	}
 	
+	var lastp={x:0,y:0};
 	var atH=function(e){
-		var to,p,x,y,o=this;
+		var to,p={x:0,y:0},x,y,o=this,pix;
 		to = e.changedTouches;
-		p=relMouse(e,o);
-		if(e.type=="touchmove" || e.type=="touchend"){
-		 x=Math.round(grid.w/o.offsetWidth*p.x);
-		 y=Math.round(grid.h/o.offsetHeight*p.y);
-		 p=gE("pixel_"+x+"_"+y);
-		 if(werkzeug==0){//draw
-			p.style.backgroundColor=aktivColor;
-			hatdaten=true;
-		 }	
-		 else if(werkzeug==1){//picker			
-			var col=p.style.backgroundColor;
-			if(col.length>0){o.setColor(col);}
-			else{o.setColor("rgb(0, 0, 0)");}
-			o.setModus(0);
+		
+		if(e.targetTouches!=undefined){
+			if(e.targetTouches.length>0){
+				/*var t1=e.targetTouches[0];
+				p.x=t1.clientX;
+				p.y=t1.clientY;*/
+				p=relMouse(e.targetTouches[0],o);
+				lastp=p;
+			}
+			else{
+				p=lastp;
+			}
+		}
+		
+		if(e.type=="touchmove"|| e.type=="touchend"){ 
+		 x=Math.floor(	p.x /	(o.offsetWidth/grid.w)	);
+		 y=Math.floor(	p.y /	(o.offsetHeight/grid.h)	);
+
+		 pix=gE("pixel_"+x+"_"+y);
+		 if(pix!=null){
+			 if( werkzeug==0){//draw
+				pix.style.backgroundColor=aktivColor;
+				hatdaten=true;
+			 }	
+			 else if(werkzeug==1){//picker			
+				var col=pix.style.backgroundColor;
+				if(col.length>0){o.setColor(col);}
+				else{o.setColor("rgb(0, 0, 0)");}
+				o.setModus(0);
+			 }
 		 }
 		}
 		e.preventDefault();
@@ -946,7 +966,7 @@ function c_Editor(ziel,wos){
 			img.onload = function() {
 				var b=this.basis,
 					c=document.createElement("canvas"),
-					cc,bb,z,x,y,p,d,fr,fg,fb,pix;
+					cc,bb,z,x,y,p,d,fr,fg,fb,pix,xx=0,yy=0;
 				c.width=grid.w;
 				c.height=grid.h;
 				c.style.position="absolute";
@@ -954,7 +974,12 @@ function c_Editor(ziel,wos){
 			
 				bb=this.width;
 				if(bb>this.height)bb=this.height;			
-				cc.drawImage(this,0,0,bb,bb, 0,0,grid.w,grid.h);
+				
+				if(this.width>this.height){xx=this.width*0.5-bb*0.5}
+				if(this.width<this.height){yy=this.height*0.5-bb*0.5}
+				
+				cc.drawImage(this,xx,yy,bb,bb, 0,0,grid.w,grid.h);
+				
 				imgd=cc.getImageData(0,0,grid.w,grid.h);
 				pix=imgd.data;
 				
